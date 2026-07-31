@@ -830,6 +830,7 @@ fn is_internal_url(url: &tauri::Url) -> bool {
             }
             false
         }
+        }
         _ => false,
     }
 }
@@ -1311,6 +1312,7 @@ fn main() {
             preview::preview_set_bounds,
             preview::preview_navigate,
             preview::preview_reload,
+            preview::preview_set_zoom,
             preview::preview_destroy,
             preview::preview_picker_toggle,
             preview::preview_element_apply,
