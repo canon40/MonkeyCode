@@ -1,8 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { latestPreviewUrl } from "./previewUrl";
+import { latestPreviewUrl, normalizePreviewUrl } from "./previewUrl";
 import type { LogItem } from "./types";
 
 const agent = (text: string): LogItem => ({ kind: "agent", text });
+
+describe("normalizePreviewUrl", () => {
+  it("accepts loopback http URLs", () => {
+    expect(normalizePreviewUrl("http://localhost:5173/design")).toBe("http://localhost:5173/design");
+    expect(normalizePreviewUrl("https://127.0.0.1:4173")).toBe("https://127.0.0.1:4173/");
+    expect(normalizePreviewUrl("http://[::1]:8080")).toBe("http://[::1]:8080/");
+  });
+
+  it("rejects remote and unsafe URLs", () => {
+    expect(normalizePreviewUrl("https://example.com")).toBeNull();
+    expect(normalizePreviewUrl("https://localhost.evil")).toBeNull();
+    expect(normalizePreviewUrl("javascript:alert(1)")).toBeNull();
+  });
+});
 
 describe("latestPreviewUrl", () => {
   it("提取 Agent 最后给出的本地预览地址", () => {

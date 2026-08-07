@@ -303,6 +303,7 @@ function ItemView({
   uploadUrl,
   designPreviewHtml,
   onLocalLink,
+  onPreviewLink,
 }: {
   item: Exclude<LogItem, { kind: "tool" }>;
   onPermAnswer: (id: string, action: "allow" | "always" | "persist" | "deny") => void;
@@ -311,6 +312,7 @@ function ItemView({
   uploadUrl?: (path: string) => Promise<string>;
   designPreviewHtml?: (path: string) => Promise<string>;
   onLocalLink?: (path: string) => void;
+  onPreviewLink?: (url: string) => void;
 }) {
   switch (item.kind) {
     case "user":
@@ -333,7 +335,7 @@ function ItemView({
           className="mc-message-row"
           style={{ position: "relative", wordBreak: "break-word", animation: "mcin .25s ease" }}
         >
-          <Markdown text={item.text} localImageUrl={uploadUrl} onLocalLink={onLocalLink} />
+          <Markdown text={item.text} localImageUrl={uploadUrl} onLocalLink={onLocalLink} onPreviewLink={onPreviewLink} />
           <MessageTime timestamp={item.timestamp} align="start" />
         </div>
       );
@@ -366,6 +368,7 @@ export function LogList({
   uploadUrl,
   designPreviewHtml,
   onLocalLink,
+  onPreviewLink,
   workdir,
   loadFullTool,
 }: {
@@ -385,6 +388,8 @@ export function LogList({
   designPreviewHtml?: (path: string) => Promise<string>;
   /** Markdown 中工作区文件链接的安全打开动作 */
   onLocalLink?: (path: string) => void;
+  /** Markdown 中 localhost 地址的应用内预览动作 */
+  onPreviewLink?: (url: string) => void;
   /** 工作区根:工具卡标题里的绝对路径按它收敛为相对路径 */
   workdir?: string;
   /** 回读被截断的工具大字段原文(见 fold.rs 的大字段护栏) */
@@ -453,6 +458,7 @@ export function LogList({
           uploadUrl={uploadUrl}
           designPreviewHtml={designPreviewHtml}
           onLocalLink={onLocalLink}
+          onPreviewLink={onPreviewLink}
         />,
       );
       i++;

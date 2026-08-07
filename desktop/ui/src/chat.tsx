@@ -601,7 +601,7 @@ export function ChatView({
   /** MVP 先由项目会话提供；后续可直接替换为 Agent 的显式可预览信号。 */
   previewAvailable?: boolean;
   previewAttentionKey?: string;
-  onOpenPreview?: () => void;
+  onOpenPreview?: (url?: string) => void;
   onOpenDrawer: (tab?: "files" | "changes") => void;
   onOpenChild: (id: string) => void;
   onOpenNoticeSession: (id: string) => void;
@@ -971,7 +971,7 @@ export function ChatView({
             key={previewAttentionKey}
             className="preview-cta-attention"
             title="在应用内预览 localhost 开发服务"
-            onClick={onOpenPreview}
+            onClick={() => onOpenPreview()}
             icon={<IconMonitor size={12} color="var(--t3)" />}
           >
             预览
@@ -1102,6 +1102,7 @@ export function ChatView({
               uploadUrl={session.uploadUrl}
               designPreviewHtml={session.designPreviewHtml}
               onLocalLink={revealMarkdownLink}
+              onPreviewLink={onOpenPreview}
               workdir={workdir}
               loadFullTool={session.loadFrame}
             />

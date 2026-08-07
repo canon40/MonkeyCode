@@ -11,6 +11,7 @@ import {
 import { highlightFence } from "./codeView";
 import { openExternal } from "./host";
 import { resolveMarkdownResource } from "./markdownPaths";
+import { normalizePreviewUrl } from "./previewUrl";
 
 marked.setOptions({ gfm: true, breaks: true });
 
@@ -61,9 +62,13 @@ export function copyText(text: string) {
   }
 }
 
-/** 正文里的链接一律不走 webview 导航(WKWebView 里点 <a> 会把应用页面跳走):
- * http(s) 交系统浏览器/新标签页,其余协议直接拦下。 */
-function onMarkdownClick(e: ReactMouseEvent<HTMLDivElement>, onLocalLink?: (path: string) => void) {
+/** 正文链接不走 webview 导航(WKWebView 里点 <a> 会把应用页面跳走):
+ * localhost 预览地址在应用内打开,其余 http(s) 交系统浏览器。 */
+function onMarkdownClick(
+  e: ReactMouseEvent<HTMLDivElement>,
+  onLocalLink?: (path: string) => void,
+  onPreviewLink?: (url: string) => void,
+) {
   const target = e.target as HTMLElement;
   const copy = target.closest<HTMLButtonElement>("button.mdcopy");
   if (copy) {
@@ -85,6 +90,11 @@ function onMarkdownClick(e: ReactMouseEvent<HTMLDivElement>, onLocalLink?: (path
     return;
   }
   const href = a.getAttribute("href") || "";
+  const previewUrl = normalizePreviewUrl(href);
+  if (previewUrl && onPreviewLink) {
+    onPreviewLink(previewUrl);
+    return;
+  }
   if (/^https?:/i.test(href)) openExternal(href);
 }
 
@@ -133,10 +143,12 @@ export function Markdown({
   text,
   localImageUrl,
   onLocalLink,
+  onPreviewLink,
 }: {
   text: string;
   localImageUrl?: (path: string) => Promise<string>;
   onLocalLink?: (path: string) => void;
+  onPreviewLink?: (url: string) => void;
 }) {
   const html = useMemo(() => markdownHtml(text), [text]);
   const root = useRef<HTMLDivElement>(null);
@@ -174,7 +186,7 @@ export function Markdown({
     // localImageUrl 随 SessionHandle 渲染生成新闭包;同一条消息只按 HTML 变化重跑。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html]);
-  return <div ref={root} className="md" onClick={(e) => onMarkdownClick(e, onLocalLink)} dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div ref={root} className="md" onClick={(e) => onMarkdownClick(e, onLocalLink, onPreviewLink)} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
 /** 单行内联 markdown(子代理 feed 行:加粗/行内代码等,不产生块级元素,
