@@ -767,8 +767,8 @@ describe("Phase 1 设计模板选择", () => {
     title: "选择模板",
     description: "挑选一个方向",
     items: [
-      { id: "clean", title: "简洁", image: "uploads/clean.png", recommended: true },
-      { id: "bold", title: "醒目", image: "uploads/bold.png", description: "高对比" },
+      { id: "clean", title: "简洁", image: "uploads/clean.png", reason: "适合企业 IM 的功能说明与转化路径", recommended: true },
+      { id: "bold", title: "醒目", image: "uploads/bold.png", description: "高对比", reason: "适合突出产品发布信息" },
     ],
     refinement: { enabled: true, placeholder: "补充条件" },
   });
@@ -787,6 +787,12 @@ describe("Phase 1 设计模板选择", () => {
       state: "open",
       allowedActions: { select: true, next: true, direct: true, cancel: true },
       refinement: { enabled: true, placeholder: "补充条件" },
+    });
+    expect(next.items[0]).toMatchObject({
+      items: [
+        expect.objectContaining({ id: "clean", reason: "适合企业 IM 的功能说明与转化路径" }),
+        expect.any(Object),
+      ],
     });
   });
 

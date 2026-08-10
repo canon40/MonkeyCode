@@ -452,6 +452,7 @@ function normalizeDesignRequest(raw: unknown): Extract<LogItem, { kind: "design-
       ...(image ? { image } : {}),
       ...(normalizedPreview ? { preview: normalizedPreview } : {}),
       ...(typeof item.description === "string" ? { description: item.description } : {}),
+      ...(typeof item.reason === "string" && item.reason ? { reason: item.reason } : {}),
       ...(typeof item.recommended === "boolean" ? { recommended: item.recommended } : {}),
     });
   }

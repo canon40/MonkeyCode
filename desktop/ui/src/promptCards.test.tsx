@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { createDesignTemplateBlobUrl, DesignTemplateSelectionCard } from "./promptCards";
+import { createDesignTemplateBlobUrl, DesignTemplateSelectionCard, resolveDesignTemplatePreviewState } from "./promptCards";
 import type { LogItem } from "./types";
 
 const openItem: Extract<LogItem, { kind: "design-template-selection" }> = {
@@ -9,9 +9,9 @@ const openItem: Extract<LogItem, { kind: "design-template-selection" }> = {
   title: "视觉方向",
   description: "选择一个视觉方向",
   items: [
-    { id: "clean", title: "简洁", image: "uploads/clean.png", recommended: true },
+    { id: "clean", title: "简洁", image: "uploads/clean.png", reason: "适合企业 IM 的价值说明与转化路径", recommended: true },
     { id: "bold", title: "醒目", image: "uploads/bold.png", description: "高对比" },
-    { id: "motion", title: "动态", preview: { type: "html", path: ".monkeycode/design/template-previews/motion/index.html" } },
+    { id: "motion", title: "动态", image: "uploads/motion.webp", preview: { type: "html", path: ".monkeycode/design/template-previews/motion/index.html" } },
   ],
   refinement: { enabled: true, placeholder: "补充设计条件" },
   allowedActions: { select: true, next: true, direct: true, cancel: true },
@@ -32,18 +32,36 @@ describe("DesignTemplateSelectionCard", () => {
     create.mockRestore();
   });
 
+  it("动态预览读取失败时切换到缩略图", () => {
+    expect(resolveDesignTemplatePreviewState("error", true)).toEqual({
+      showHtml: false,
+      showFallback: true,
+      showLoading: false,
+      showError: false,
+    });
+    expect(resolveDesignTemplatePreviewState("error", false)).toEqual({
+      showHtml: false,
+      showFallback: false,
+      showLoading: false,
+      showError: true,
+    });
+  });
+
   it("独立渲染设计网格、推荐标记和全部业务动作", () => {
     const html = renderToStaticMarkup(
       <DesignTemplateSelectionCard item={openItem} uploadUrl={async (path) => path} onRespond={vi.fn(async () => true)} />,
     );
     expect(html).toContain("视觉方向");
     expect(html).toContain("推荐");
+    expect(html).toContain("推荐理由：");
+    expect(html).toContain("适合企业 IM 的价值说明与转化路径");
     expect(html).toContain("补充设计条件");
     expect(html).toContain("换一批");
     expect(html).toContain("不使用模板");
     expect(html).toContain("取消");
     expect(html).toContain("data-preview-type=\"image\"");
     expect(html).toContain("data-preview-type=\"html\"");
+    expect(html).toContain("data-preview-fallback=\"image\"");
     // 服务端渲染时仍是占位，进入视口后才会挂 iframe。
     expect(html).not.toContain("<iframe");
     expect(html).toContain(">选择</button>");

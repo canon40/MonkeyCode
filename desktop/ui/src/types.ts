@@ -228,6 +228,7 @@ export interface DesignTemplateItem {
   image?: string;
   preview?: DesignTemplatePreview;
   description?: string;
+  reason?: string;
   recommended?: boolean;
 }
 

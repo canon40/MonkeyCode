@@ -122,16 +122,27 @@ export function createDesignTemplateBlobUrl(html: string): string {
 
 /** 候选进入视口附近才读取/挂载预览。iframe 不接受指针事件，选择仍由外层
  * button 处理；opaque sandbox + 壳注入 CSP 双层限制动态模板。 */
-export function DesignTemplatePreview({
+export function resolveDesignTemplatePreviewState(status: "idle" | "loading" | "ready" | "error", hasFallback: boolean) {
+  return {
+    showHtml: status === "ready",
+    showFallback: hasFallback && status !== "ready",
+    showLoading: !hasFallback && (status === "idle" || status === "loading"),
+    showError: !hasFallback && status === "error",
+  };
+}
+
+function DesignTemplatePreview({
   title,
   type,
   path,
+  fallbackPath,
   uploadUrl,
   loadHtml,
 }: {
   title: string;
   type: "html" | "image";
   path: string;
+  fallbackPath?: string;
   uploadUrl?: (path: string) => Promise<string>;
   loadHtml?: (path: string) => Promise<string>;
 }) {
@@ -188,12 +199,14 @@ export function DesignTemplatePreview({
     };
   }, [loadHtml, mounted, path, type]);
 
+  const htmlState = resolveDesignTemplatePreviewState(preview.status, Boolean(fallbackPath && uploadUrl));
+
   return (
-    <div ref={host} data-preview-type={type} data-preview-state={type === "html" ? preview.status : undefined} style={{ width: "100%", aspectRatio: "4 / 3", overflow: "hidden", background: "var(--hov)", pointerEvents: "none" }}>
+    <div ref={host} data-preview-type={type} data-preview-state={type === "html" ? preview.status : undefined} data-preview-fallback={fallbackPath ? "image" : undefined} style={{ width: "100%", aspectRatio: "4 / 3", overflow: "hidden", background: "var(--hov)", pointerEvents: "none" }}>
       {mounted && type === "image" && uploadUrl && (
         <UploadImg load={() => uploadUrl(path)} alt={title} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
       )}
-      {mounted && type === "html" && preview.status === "ready" && (
+      {mounted && type === "html" && htmlState.showHtml && preview.status === "ready" && (
         <iframe
           title={`${title} 动态预览`}
           sandbox="allow-scripts"
@@ -203,7 +216,15 @@ export function DesignTemplatePreview({
           style={{ display: "block", width: "100%", height: "100%", border: 0, pointerEvents: "none" }}
         />
       )}
-      {mounted && type === "html" && preview.status === "error" && (
+      {mounted && type === "html" && htmlState.showFallback && fallbackPath && uploadUrl && (
+        <UploadImg load={() => uploadUrl(fallbackPath)} alt={title} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
+      )}
+      {mounted && type === "html" && htmlState.showLoading && (
+        <span style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", color: "var(--t5)", fontSize: 11.5 }}>
+          加载动态预览…
+        </span>
+      )}
+      {mounted && type === "html" && htmlState.showError && (
         <span style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", color: "var(--t5)", fontSize: 11.5 }}>
           动态预览加载失败
         </span>
@@ -294,12 +315,17 @@ export function DesignTemplateSelectionCard({
               {(() => {
                 const preview = candidate.preview ?? (candidate.image ? { type: "image" as const, path: candidate.image } : undefined);
                 return preview
-                  ? <DesignTemplatePreview title={candidate.title} type={preview.type} path={preview.path} uploadUrl={uploadUrl} loadHtml={loadHtml} />
+                  ? <DesignTemplatePreview title={candidate.title} type={preview.type} path={preview.path} fallbackPath={preview.type === "html" ? candidate.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
                   : <div style={{ width: "100%", aspectRatio: "4 / 3", background: "var(--hov)", pointerEvents: "none" }} />;
               })()}
               <span style={{ display: "block", padding: "9px 10px" }}>
                 <span style={{ display: "block", color: "var(--t1)", fontSize: 12.5, fontWeight: 700 }}>{candidate.title}</span>
                 {candidate.description && <span style={{ display: "block", marginTop: 3, color: "var(--t5)", fontSize: 11, lineHeight: 1.4 }}>{candidate.description}</span>}
+                {candidate.reason && (
+                  <span style={{ display: "block", marginTop: 5, color: "var(--t3)", fontSize: 11, lineHeight: 1.4 }}>
+                    <strong style={{ color: "var(--t2)", fontWeight: 650 }}>推荐理由：</strong>{candidate.reason}
+                  </span>
+                )}
               </span>
             </button>
           );
