@@ -226,7 +226,9 @@ export function DesignTemplateSelectionCard({
         <div className="grid min-w-0 grid-cols-3 items-stretch gap-3">
           {item.items.map((candidate) => {
             const active = selectedId === candidate.id;
-            const preview = candidate.preview ?? (candidate.image ? { type: "image" as const, path: candidate.image } : undefined);
+            const preview = candidate.image
+              ? { type: "image" as const, path: candidate.image }
+              : candidate.preview;
             return (
               <button
                 key={candidate.id}
@@ -253,24 +255,26 @@ export function DesignTemplateSelectionCard({
             );
           })}
         </div>
-        {item.allowedActions.next && item.refinement?.enabled && (
-          <input
-            type="text"
-            className="input input-sm relative z-0 w-full min-w-0 shrink-0 text-xs"
-            value={refinement}
-            disabled={submitting}
-            aria-label={t("chat.design.refinement")}
-            placeholder={item.refinement.placeholder || t("chat.design.refinement")}
-            onChange={(event) => setRefinement(event.target.value)}
-          />
-        )}
-        <footer className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 border-t border-base-300 pt-3">
-          {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
-          {item.allowedActions.cancel && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("cancel")}>{t("chat.design.cancel")}</button>}
-          {item.allowedActions.direct && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("direct")}>{t("chat.design.direct")}</button>}
-          {item.allowedActions.next && <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => void submit("next")}>{t("chat.design.next")}</button>}
-          {item.allowedActions.select && <button type="button" className="btn btn-primary btn-sm" disabled={submitting || !validSelectedId} onClick={() => void submit("select")}>{submitting ? t("chat.design.submitting") : t("chat.design.select")}</button>}
-        </footer>
+        <div className="flex min-w-0 shrink-0 flex-col gap-3 border-t border-base-300 pt-3">
+          {item.allowedActions.next && item.refinement?.enabled && (
+            <input
+              type="text"
+              className="input input-sm w-full min-w-0 text-xs"
+              value={refinement}
+              disabled={submitting}
+              aria-label={t("chat.design.refinement")}
+              placeholder={item.refinement.placeholder || t("chat.design.refinement")}
+              onChange={(event) => setRefinement(event.target.value)}
+            />
+          )}
+          <footer className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+            {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
+            {item.allowedActions.cancel && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("cancel")}>{t("chat.design.cancel")}</button>}
+            {item.allowedActions.direct && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("direct")}>{t("chat.design.direct")}</button>}
+            {item.allowedActions.next && <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => void submit("next")}>{t("chat.design.next")}</button>}
+            {item.allowedActions.select && <button type="button" className="btn btn-primary btn-sm" disabled={submitting || !validSelectedId} onClick={() => void submit("select")}>{submitting ? t("chat.design.submitting") : t("chat.design.select")}</button>}
+          </footer>
+        </div>
       </div>
     </section>
   );

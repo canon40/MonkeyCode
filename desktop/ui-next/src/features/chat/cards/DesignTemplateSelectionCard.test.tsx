@@ -33,7 +33,9 @@ describe("DesignTemplateSelectionCard", () => {
     expect(clean.querySelector(".aspect-video")).toBeTruthy();
     expect(clean.querySelector("strong")?.className).toContain("line-clamp-1");
     expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-2");
-    expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
+    const refinement = screen.getByRole("textbox", { name: "补充你的设计条件（可选）" });
+    expect(refinement.parentElement?.className).toContain("border-t");
+    expect(refinement.parentElement?.previousElementSibling?.className).toContain("grid-cols-3");
     expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "不使用模板" })).toBeTruthy();
@@ -65,6 +67,23 @@ describe("DesignTemplateSelectionCard", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("prefers reliable thumbnail images when HTML previews are also available", async () => {
+    const uploadUrl = vi.fn(async (path: string) => `data:image/png;base64,${path}`);
+    const loadHtml = vi.fn(async () => "<main>preview</main>");
+    render(
+      <DesignTemplateSelectionCard
+        item={ITEM}
+        sessionId="s1"
+        sendFrame={vi.fn()}
+        uploadUrl={uploadUrl}
+        loadHtml={loadHtml}
+      />,
+    );
+    await waitFor(() => expect(uploadUrl).toHaveBeenCalledTimes(3));
+    expect(uploadUrl.mock.calls.map(([path]) => path)).toEqual(["clean.png", "fallback.png", "bold.png"]);
+    expect(loadHtml).not.toHaveBeenCalled();
+  });
+
   it("shows an error instead of a blank image preview when reading fails", async () => {
     render(
       <DesignTemplateSelectionCard
@@ -77,15 +96,14 @@ describe("DesignTemplateSelectionCard", () => {
     expect(await screen.findByText("动态预览加载失败")).toBeTruthy();
   });
 
-  it("creates UTF-8 HTML blobs and uses an opaque script sandbox with image fallback", async () => {
+  it("creates UTF-8 HTML blobs and uses an opaque script sandbox when no thumbnail exists", async () => {
     const create = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:preview");
     const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const { unmount } = render(
       <DesignTemplateSelectionCard
-        item={{ ...ITEM, items: [ITEM.items[1]!] }}
+        item={{ ...ITEM, items: [{ ...ITEM.items[1]!, image: undefined }] }}
         sessionId="s1"
         sendFrame={vi.fn()}
-        uploadUrl={async () => "data:image/png;base64,x"}
         loadHtml={async () => "<script>window.previewRan=true</script>"}
       />,
     );
