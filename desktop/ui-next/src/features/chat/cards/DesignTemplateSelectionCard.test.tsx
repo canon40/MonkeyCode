@@ -31,7 +31,9 @@ describe("DesignTemplateSelectionCard", () => {
     expect(clean.className).toContain("flex");
     const choices = clean.parentElement as HTMLElement;
     expect(choices.className).toContain("grid");
+    expect(choices.className).toContain("items-start");
     expect(choices.style.gridTemplateColumns).toContain("auto-fit");
+    expect(clean.lastElementChild?.className).not.toContain("flex-1");
     expect(clean.querySelector(".aspect-video")).toBeTruthy();
     expect(clean.querySelector("strong")?.className).toContain("line-clamp-2");
     expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-3");

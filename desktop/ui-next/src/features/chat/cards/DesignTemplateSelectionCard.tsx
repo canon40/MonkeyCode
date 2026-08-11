@@ -224,7 +224,7 @@ export function DesignTemplateSelectionCard({
       </header>
 
       <div
-        className="grid min-w-0 gap-3 p-4"
+        className="grid min-w-0 items-start gap-3 p-4"
         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))" }}
       >
         {item.items.map((candidate) => {
@@ -252,7 +252,7 @@ export function DesignTemplateSelectionCard({
                   </span>
                 )}
               </span>
-              <span className="flex min-w-0 flex-1 flex-col px-3 py-2.5">
+              <span className="flex min-w-0 flex-col px-3 py-2.5">
                 <strong className="line-clamp-2 break-words text-xs font-semibold leading-snug">{candidate.title}</strong>
                 {candidate.description && <span className="mt-1 line-clamp-2 break-words text-xs leading-relaxed text-base-content/50">{candidate.description}</span>}
                 {candidate.reason && (
