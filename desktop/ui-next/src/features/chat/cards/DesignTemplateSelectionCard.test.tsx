@@ -13,6 +13,7 @@ const ITEM: DesignTemplateSelectionItem = {
   items: [
     { id: "clean", title: "Clean", image: "clean.png", recommended: true, reason: "Matches your brief" },
     { id: "live", title: "Live", image: "fallback.png", preview: { type: "html", path: "bundle/index.html" } },
+    { id: "bold", title: "Bold", image: "bold.png" },
   ],
   allowedActions: { select: true, next: true, direct: true, cancel: true },
   refinement: { enabled: true },
@@ -28,7 +29,7 @@ describe("DesignTemplateSelectionCard", () => {
     expect(screen.getByText(/Matches your brief/)).toBeTruthy();
     const clean = screen.getByRole("button", { name: /Clean/ });
     expect(clean.className).toContain("flex");
-    expect(clean.parentElement?.className).toContain("grid-cols-2");
+    expect(clean.parentElement?.className).toContain("grid-cols-3");
     expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-3");
     expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();

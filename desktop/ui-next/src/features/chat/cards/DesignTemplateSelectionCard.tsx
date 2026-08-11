@@ -199,7 +199,7 @@ export function DesignTemplateSelectionCard({
           <h3 className="text-sm font-semibold">{item.title || t("chat.design.title")}</h3>
           {item.description && <p className="mt-1 line-clamp-2 break-words text-xs leading-relaxed text-base-content/60">{item.description}</p>}
         </header>
-        <div className="grid min-w-0 grid-cols-2 items-stretch gap-3">
+        <div className="grid min-w-0 grid-cols-3 items-stretch gap-3">
           {item.items.map((candidate) => {
             const active = selectedId === candidate.id;
             const preview = candidate.preview ?? (candidate.image ? { type: "image" as const, path: candidate.image } : undefined);
