@@ -193,13 +193,13 @@ export function DesignTemplateSelectionCard({
   const selectable = item.allowedActions.select && !submitting;
 
   return (
-    <section className="card card-border w-full max-w-[680px] bg-base-100" aria-label={item.title || t("chat.design.title")}>
-      <div className="flex flex-col gap-3 p-4">
-        <header>
+    <section className="card card-border w-full max-w-[760px] overflow-hidden bg-base-100" aria-label={item.title || t("chat.design.title")}>
+      <div className="flex min-w-0 flex-col gap-4 p-4">
+        <header className="min-w-0">
           <h3 className="text-sm font-semibold">{item.title || t("chat.design.title")}</h3>
-          {item.description && <p className="mt-1 text-xs leading-relaxed text-base-content/60">{item.description}</p>}
+          {item.description && <p className="mt-1 line-clamp-2 break-words text-xs leading-relaxed text-base-content/60">{item.description}</p>}
         </header>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-2.5">
+        <div className="grid min-w-0 grid-cols-2 items-stretch gap-3">
           {item.items.map((candidate) => {
             const active = selectedId === candidate.id;
             const preview = candidate.preview ?? (candidate.image ? { type: "image" as const, path: candidate.image } : undefined);
@@ -209,18 +209,18 @@ export function DesignTemplateSelectionCard({
                 type="button"
                 disabled={!selectable}
                 aria-pressed={active}
-                className={`relative overflow-hidden rounded-box border text-start ${active ? "border-primary bg-primary/5" : "border-base-300 bg-base-100"} ${selectable ? "cursor-pointer" : "cursor-default"}`}
+                className={`relative flex min-w-0 flex-col items-stretch overflow-hidden rounded-box border text-start ${active ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-base-300 bg-base-100"} ${selectable ? "cursor-pointer transition-colors hover:border-base-content/30" : "cursor-default"}`}
                 onClick={() => setSelectedId(candidate.id)}
               >
                 {candidate.recommended && <span className="badge badge-primary badge-sm absolute end-1.5 top-1.5 z-10">{t("chat.design.recommended")}</span>}
                 {preview ? (
                   <DesignTemplatePreview title={candidate.title} preview={preview} fallbackPath={preview.type === "html" ? candidate.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
                 ) : <div className="aspect-[4/3] bg-base-200" />}
-                <span className="block p-2.5">
-                  <strong className="block text-xs font-semibold">{candidate.title}</strong>
-                  {candidate.description && <span className="mt-1 block text-xs leading-snug text-base-content/50">{candidate.description}</span>}
+                <span className="flex min-w-0 flex-1 flex-col p-3">
+                  <strong className="line-clamp-2 break-words text-xs font-semibold leading-snug">{candidate.title}</strong>
+                  {candidate.description && <span className="mt-1 line-clamp-2 break-words text-xs leading-snug text-base-content/50">{candidate.description}</span>}
                   {candidate.reason && (
-                    <span className="mt-1.5 block text-xs leading-snug text-base-content/70">
+                    <span className="mt-2 line-clamp-3 break-words border-t border-base-200 pt-2 text-xs leading-snug text-base-content/70">
                       <strong>{t("chat.design.reason")}</strong>{candidate.reason}
                     </span>
                   )}
@@ -232,7 +232,7 @@ export function DesignTemplateSelectionCard({
         {item.allowedActions.next && item.refinement?.enabled && (
           <input
             type="text"
-            className="input input-sm w-full text-xs"
+            className="input input-sm relative z-0 w-full min-w-0 shrink-0 text-xs"
             value={refinement}
             disabled={submitting}
             aria-label={t("chat.design.refinement")}
@@ -240,7 +240,7 @@ export function DesignTemplateSelectionCard({
             onChange={(event) => setRefinement(event.target.value)}
           />
         )}
-        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-base-300 pt-3">
+        <footer className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2 border-t border-base-300 pt-3">
           {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
           {item.allowedActions.cancel && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("cancel")}>{t("chat.design.cancel")}</button>}
           {item.allowedActions.direct && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("direct")}>{t("chat.design.direct")}</button>}

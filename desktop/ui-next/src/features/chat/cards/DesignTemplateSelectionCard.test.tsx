@@ -26,6 +26,10 @@ describe("DesignTemplateSelectionCard", () => {
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={vi.fn()} />);
     expect(screen.getByText("推荐")).toBeTruthy();
     expect(screen.getByText(/Matches your brief/)).toBeTruthy();
+    const clean = screen.getByRole("button", { name: /Clean/ });
+    expect(clean.className).toContain("flex");
+    expect(clean.parentElement?.className).toContain("grid-cols-2");
+    expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-3");
     expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
