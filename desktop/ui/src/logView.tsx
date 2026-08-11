@@ -4,10 +4,10 @@ import { isImageFilename } from "./cloudUpload";
 import { openExternal } from "./host";
 import { IconChevronRight, IconSpark } from "./icons";
 import { Markdown, MarkdownInline } from "./markdown";
-import { AskCard, DesignTemplateSelectionCard, PermCard } from "./promptCards";
+import { AskCard, PermCard } from "./promptCards";
 import { permAnchors } from "./reduce";
 import { ToolCard } from "./toolCard";
-import type { CloudAttachment, DesignSelectionResponse, Frame, LogItem } from "./types";
+import type { CloudAttachment, Frame, LogItem } from "./types";
 import { UploadImg, downloadUpload } from "./uploadMedia";
 
 /** 引擎思考流按 chunk 裸拼,相邻加粗标题会连成 `**A****B**`;marked 把中间的
@@ -299,20 +299,14 @@ function ItemView({
   item,
   onPermAnswer,
   onAskAnswer,
-  onDesignSelection,
   uploadUrl,
-  designPreviewHtml,
   onLocalLink,
-  onPreviewLink,
 }: {
   item: Exclude<LogItem, { kind: "tool" }>;
   onPermAnswer: (id: string, action: "allow" | "always" | "persist" | "deny") => void;
   onAskAnswer?: (askId: string, answers: Record<string, string | string[]>) => void;
-  onDesignSelection?: (response: DesignSelectionResponse) => Promise<boolean>;
   uploadUrl?: (path: string) => Promise<string>;
-  designPreviewHtml?: (path: string) => Promise<string>;
   onLocalLink?: (path: string) => void;
-  onPreviewLink?: (url: string) => void;
 }) {
   switch (item.kind) {
     case "user":
@@ -335,7 +329,7 @@ function ItemView({
           className="mc-message-row"
           style={{ position: "relative", wordBreak: "break-word", animation: "mcin .25s ease" }}
         >
-          <Markdown text={item.text} localImageUrl={uploadUrl} onLocalLink={onLocalLink} onPreviewLink={onPreviewLink} />
+          <Markdown text={item.text} localImageUrl={uploadUrl} onLocalLink={onLocalLink} />
           <MessageTime timestamp={item.timestamp} align="start" />
         </div>
       );
@@ -352,8 +346,6 @@ function ItemView({
       return <PermCard item={item} onAnswer={onPermAnswer} />;
     case "ask":
       return <AskCard item={item} onAnswer={onAskAnswer} />;
-    case "design-template-selection":
-      return <DesignTemplateSelectionCard item={item} uploadUrl={uploadUrl} loadHtml={designPreviewHtml} onRespond={onDesignSelection} />;
   }
 }
 
@@ -363,12 +355,9 @@ export function LogList({
   keyBase = 0,
   onPermAnswer,
   onAskAnswer,
-  onDesignSelection,
   onOpenChild,
   uploadUrl,
-  designPreviewHtml,
   onLocalLink,
-  onPreviewLink,
   workdir,
   loadFullTool,
 }: {
@@ -379,17 +368,11 @@ export function LogList({
   onPermAnswer: (id: string, action: "allow" | "always" | "persist" | "deny") => void;
   /** 回答 AI 提问卡(云端任务);缺省则提问卡只读 */
   onAskAnswer?: (askId: string, answers: Record<string, string | string[]>) => void;
-  /** Phase 1 设计模板选择业务响应；Promise false 时卡片保持可重试。 */
-  onDesignSelection?: (response: DesignSelectionResponse) => Promise<boolean>;
   onOpenChild?: (id: string) => void;
   /** 已上传附件/工作区图片路径 → 可渲染 URL(不传则本地图片不加载) */
   uploadUrl?: (path: string) => Promise<string>;
-  /** 固定模板缓存根中的 HTML bundle 受控回读。 */
-  designPreviewHtml?: (path: string) => Promise<string>;
   /** Markdown 中工作区文件链接的安全打开动作 */
   onLocalLink?: (path: string) => void;
-  /** Markdown 中 localhost 地址的应用内预览动作 */
-  onPreviewLink?: (url: string) => void;
   /** 工作区根:工具卡标题里的绝对路径按它收敛为相对路径 */
   workdir?: string;
   /** 回读被截断的工具大字段原文(见 fold.rs 的大字段护栏) */
@@ -454,11 +437,8 @@ export function LogList({
           item={it}
           onPermAnswer={onPermAnswer}
           onAskAnswer={onAskAnswer}
-          onDesignSelection={onDesignSelection}
           uploadUrl={uploadUrl}
-          designPreviewHtml={designPreviewHtml}
           onLocalLink={onLocalLink}
-          onPreviewLink={onPreviewLink}
         />,
       );
       i++;

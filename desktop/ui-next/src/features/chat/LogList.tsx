@@ -29,6 +29,7 @@ import type { ChatItem, ChatState, Frame, PermItem } from "@/lib/protocol/types"
 import { presentToolCall } from "@/lib/tools/toolLabels";
 import { thoughtMarkdown, thoughtSummary } from "@/lib/util/thoughtMarkdown";
 import { AskCard } from "./cards/AskCard";
+import { DesignTemplateSelectionCard } from "./cards/DesignTemplateSelectionCard";
 import { PermCard } from "./cards/PermCard";
 import { statusDot } from "./cards/statusDot";
 import { ToolCard } from "./cards/ToolCard";
@@ -174,7 +175,9 @@ interface RowShared {
   readonly?: boolean;
   onOpenChildSession?: (id: string) => void;
   uploadUrl?: (path: string) => Promise<string>;
+  loadDesignPreview?: (path: string) => Promise<string>;
   onLocalLink?: (path: string) => void;
+  onPreviewUrl?: (url: string) => boolean;
   workdir?: string;
   loadFullTool?: (seq: number) => Promise<Frame>;
 }
@@ -201,7 +204,7 @@ function renderItem(item: ChatItem, o: RenderOpts) {
       return (
         <div className="group relative flex flex-col">
           <MessageTime timestamp={item.timestamp} className="absolute -top-3.5 start-0" />
-          <Markdown source={item.text} localImageUrl={o.uploadUrl} onLocalLink={o.onLocalLink} />
+          <Markdown source={item.text} localImageUrl={o.uploadUrl} onLocalLink={o.onLocalLink} onUrlLink={o.onPreviewUrl} />
         </div>
       );
     case "thought":
@@ -237,6 +240,17 @@ function renderItem(item: ChatItem, o: RenderOpts) {
       return <PermCard item={item} sessionId={o.sessionId} sendFrame={o.sendFrame} readonly={o.readonly} />;
     case "ask":
       return <AskCard item={item} sessionId={o.sessionId} sendFrame={o.sendFrame} readonly={o.readonly} />;
+    case "design-template-selection":
+      return (
+        <DesignTemplateSelectionCard
+          item={item}
+          sessionId={o.sessionId}
+          sendFrame={o.sendFrame}
+          readonly={o.readonly}
+          uploadUrl={o.uploadUrl}
+          loadHtml={o.loadDesignPreview}
+        />
+      );
     case "sys":
       // turn-end 收敛为 2px 呼吸位:消息天然按用户/助手交替,不再用文字
       // 切碎正文;全文留在 title 供悬停查证(旧 UI TurnDivider 同语义)
@@ -407,7 +421,9 @@ export const LogList = memo(function LogList({
   readonly,
   onOpenChildSession,
   uploadUrl,
+  loadDesignPreview,
   onLocalLink,
+  onPreviewUrl,
   workdir,
   loadFullTool,
 }: {
@@ -424,8 +440,11 @@ export const LogList = memo(function LogList({
   onOpenChildSession?: (id: string) => void;
   /** 本地附件回读通道(路径 → data URL);缺省 = 不剥附件行、正文原样。 */
   uploadUrl?: (path: string) => Promise<string>;
+  /** 固定模板缓存根中的 HTML bundle 受控回读。 */
+  loadDesignPreview?: (path: string) => Promise<string>;
   /** markdown 工作区文件链接点击代理(reveal);缺省点击无动作。 */
   onLocalLink?: (path: string) => void;
+  onPreviewUrl?: (url: string) => boolean;
   /** 会话工作目录:工具卡 path 型目标剥绝对前缀;缺省不剥。 */
   workdir?: string;
   /** 工具卡大字段回读通道(按帧 seq 取原帧);缺省只展示截断头部。 */
@@ -578,7 +597,7 @@ export const LogList = memo(function LogList({
     });
   // 行级稳定引用集(每个 prop 自身稳定,对象本身逐渲染新造没关系——memo
   // 比的是展开后的单个 prop)
-  const shared: RowShared = { sessionId, sendFrame, readonly, onOpenChildSession, uploadUrl, onLocalLink, workdir, loadFullTool };
+  const shared: RowShared = { sessionId, sendFrame, readonly, onOpenChildSession, uploadUrl, loadDesignPreview, onLocalLink, onPreviewUrl, workdir, loadFullTool };
   const permOf = (it: ChatItem) => (it.kind === "tool" ? anchors.get(it.tcId) : undefined);
 
   // 条目节奏:消息块之间放宽(16px);组内工具卡零距(共享外框)。以包裹层

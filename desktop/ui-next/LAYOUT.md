@@ -298,5 +298,12 @@ footer(固定钉底):更新提示等常驻条,永不随列表滚动
 - FilesDrawer 与 CloudTaskView 详情抽屉:daisyUI drawer 是 checkbox 驱动的
   整页布局原语,与受控开合+拖拽调宽不适配(FilesDrawer 头注 L1-4);面板
   自绘,scrim 用语义色 `bg-base-content/20`。
+- **DesignPreviewWorkbench**:会话主区右侧的可拖拽分栏工作台。预览面必须是 Tauri
+  原生 child webview（隔离本地开发站点、复用壳侧截图/元素编辑能力），因此不能用
+  daisyUI iframe/card 代替；工作台 chrome、tabs、按钮、输入与浮层仍全部使用
+  daisyUI/Tailwind。分栏仅在识别到 localhost/127.0.0.1/[::1] HTTP(S) 地址并由用户
+  打开后出现，切会话/卸载必须销毁 child。任何代码态、截图标注、元素编辑、抽屉或
+  modal 遮挡期间先隐藏原生 child（原生层不受 DOM z-index 裁剪），恢复后按
+  ResizeObserver 实测矩形重新 set_bounds/show。
 - xterm/term.css:第三方 canvas/DOM,吃不了主题变量且终端岛恒深色面
   (见 term.css 头注);仅限 xterm 本体,壳外皮相(终端卡)不豁免。

@@ -844,7 +844,6 @@ fn is_internal_url(url: &tauri::Url) -> bool {
             }
             false
         }
-        }
         _ => false,
     }
 }

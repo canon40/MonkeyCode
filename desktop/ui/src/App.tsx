@@ -47,8 +47,6 @@ import { inspectMcAccount } from "./mcaccount";
 import { workspaceRelativePath } from "./markdownPaths";
 import { sameModelName } from "./modelMenu";
 import { NewTaskView, type NewTaskPrefill } from "./newtask";
-import { DesignPreview } from "./preview";
-import { latestPreviewUrl } from "./previewUrl";
 import { isProjectArchived, readArchivedProjects, updateArchivedProjects } from "./projectArchive";
 import { initialChat, reduceBatch, type ChatState } from "./reduce";
 import { noticeForSessionEvent } from "./sessionNotice";
@@ -165,8 +163,6 @@ export default function App() {
   const [drawer, setDrawer] = useState<"files" | "changes" | null>(null);
   const drawerEscRef = useRef<(() => boolean) | null>(null);
   const [childView, setChildView] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [requestedPreviewUrl, setRequestedPreviewUrl] = useState<string | null>(null);
   // 新建任务表单状态整体在 NewTaskView 内(随视图生命周期);App 只保留外部
   // 预填触发(侧栏本地/云端/对话 +、项目行 +)——每次触发都换新对象,同入口重复点击也生效
   const [newTaskPrefill, setNewTaskPrefill] = useState<NewTaskPrefill | null>(null);
@@ -391,10 +387,6 @@ export default function App() {
   }, []);
 
   const session = useSession({ onSessionsChanged: () => void refreshSessions() });
-  useEffect(() => {
-    setPreviewOpen(false);
-    setRequestedPreviewUrl(null);
-  }, [session.id]);
 
   // 后台会话提醒:内核事件流推送状态变更(不轮询),非当前会话等待审批/
   // 到达终态时在 Composer 上方给带类型、可跳转的短暂提示。
@@ -685,7 +677,6 @@ export default function App() {
 
   // ===== 派生状态 =====
   const currentMeta = sessions.find((m) => m.id === session.id);
-  const inferredPreviewUrl = latestPreviewUrl(session.chat.items);
   // 会话记的名字可能是加来源后缀之前的裸名:先落到当下的真实条目上,
   // 选择器高亮、思考档回查、切模型才不会齐齐落空(壳侧 model_id_of 同款兜底)
   const sessionModelEntry = session.model
@@ -711,7 +702,6 @@ export default function App() {
         workdirMatchesEnv(m.workdir, kernelEnv),
     ),
   ).map((g) => g.dir);
-  useEffect(() => setRequestedPreviewUrl(null), [inferredPreviewUrl]);
 
   // ===== 全局快捷键:⇧⇥ 权限模式、⏎/esc 应答审批、esc 关闭浮层 =====
   // 输入态 Esc(清空/取消输入法/关自动补全)只收敛焦点,不触发视图级动作
@@ -870,7 +860,6 @@ export default function App() {
           onArchive={(m) => void archiveSession(m)}
           onDelete={(m) => void removeSession(m)}
           onRename={(m, title) => void renameSession(m, title)}
-          panelCollapsed={previewOpen && view === "session"}
         />
       )}
 
@@ -920,38 +909,19 @@ export default function App() {
             }}
           />
         ) : (
-          <DesignPreview
-            sessionId={session.id}
-            suggestedUrl={requestedPreviewUrl ?? inferredPreviewUrl}
-            open={previewOpen}
-            obscured={!!drawer || !!childView}
-            onClose={() => setPreviewOpen(false)}
-            onSendAgent={async (files, prompt) => {
-              const sent = await session.sendFiles(prompt, files);
-              if (!sent) throw new Error("设计反馈发送失败");
-            }}
-            onQueueAgent={async (files) => { await session.addFiles(files); }}
-          >
-            <ChatView
-              meta={currentMeta}
-              session={session}
-              models={menuModels}
-              currentModel={currentModel}
-              chatMode={currentMeta?.kind === "chat"}
-              previewAvailable={!!currentMeta && currentMeta.kind !== "chat"}
-              previewAttentionKey={session.id ?? undefined}
-              onOpenPreview={(url) => {
-                setRequestedPreviewUrl(url ?? null);
-                setPreviewOpen(true);
-              }}
-              onOpenDrawer={openDrawer}
-              onOpenChild={setChildView}
-              onOpenNoticeSession={(id) => void openNoticeSession(id)}
-              onArchive={() => currentMeta && void archiveSession(currentMeta)}
-              onDelete={() => currentMeta && void removeSession(currentMeta)}
-              onRename={(title) => currentMeta && void renameSession(currentMeta, title)}
-            />
-          </DesignPreview>
+          <ChatView
+            meta={currentMeta}
+            session={session}
+            models={menuModels}
+            currentModel={currentModel}
+            chatMode={currentMeta?.kind === "chat"}
+            onOpenDrawer={openDrawer}
+            onOpenChild={setChildView}
+            onOpenNoticeSession={(id) => void openNoticeSession(id)}
+            onArchive={() => currentMeta && void archiveSession(currentMeta)}
+            onDelete={() => currentMeta && void removeSession(currentMeta)}
+            onRename={(title) => currentMeta && void renameSession(currentMeta, title)}
+          />
         )}
       </div>
 

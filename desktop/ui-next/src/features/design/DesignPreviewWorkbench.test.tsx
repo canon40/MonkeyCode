@@ -1,0 +1,115 @@
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComposerCtl } from "@/features/chat/composer/useComposer";
+import { DesignPreviewWorkbench } from "./DesignPreviewWorkbench";
+
+type EventCb = (event: { payload: unknown }) => void;
+let calls: { cmd: string; args?: Record<string, unknown> }[];
+let events: Map<string, EventCb>;
+
+beforeEach(() => {
+  calls = []; events = new Map();
+  vi.mocked(composer.sendWithFiles).mockReset().mockResolvedValue(true);
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ x: 400, y: 80, left: 400, top: 80, right: 1000, bottom: 480, width: 600, height: 400, toJSON() {} });
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
+    core: { invoke: async (cmd: string, args?: Record<string, unknown>) => {
+      calls.push({ cmd, args });
+      if (cmd === "preview_serialize") queueMicrotask(() => events.get("preview-serialized")?.({ payload: { requestId: args?.requestId, html: "<html>serialized</html>" } }));
+      if (cmd === "preview_capture") queueMicrotask(() => events.get("preview-captured")?.({ payload: { requestId: args?.requestId, dataUrl: "data:image/png;base64,AQID" } }));
+    } },
+    event: { listen: async (name: string, cb: EventCb) => { events.set(name, cb); return () => events.delete(name); } },
+  };
+});
+
+afterEach(() => { delete (window as unknown as { __TAURI__?: unknown }).__TAURI__; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+const composer = { sendWithFiles: vi.fn(async () => true) } as unknown as ComposerCtl;
+
+function mount(obscured = false) {
+  return render(<DesignPreviewWorkbench sessionId="s1" initialUrl="http://localhost:5173/app" composer={composer} obscured={obscured} onClose={() => {}} />);
+}
+
+describe("DesignPreviewWorkbench native lifecycle", () => {
+  it("creates with measured bounds, hides under an obscurer, restores and destroys", async () => {
+    const view = mount();
+    await waitFor(() => expect(calls.some((c) => c.cmd === "preview_create")).toBe(true));
+    expect(calls.find((c) => c.cmd === "preview_create")?.args?.bounds).toEqual({ x: 400, y: 80, width: 600, height: 400 });
+    view.rerender(<DesignPreviewWorkbench sessionId="s1" initialUrl="http://localhost:5173/app" composer={composer} obscured onClose={() => {}} />);
+    await waitFor(() => expect(calls.some((c) => c.cmd === "preview_hide")).toBe(true));
+    view.rerender(<DesignPreviewWorkbench sessionId="s1" initialUrl="http://localhost:5173/app" composer={composer} obscured={false} onClose={() => {}} />);
+    await waitFor(() => expect(calls.some((c) => c.cmd === "preview_show")).toBe(true));
+    view.unmount();
+    expect(calls.some((c) => c.cmd === "preview_destroy")).toBe(true);
+  });
+
+  it("serializes before editing and saves project-relative HTML through the backend", async () => {
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: /Code/ }));
+    expect(await screen.findByDisplayValue("<html>serialized</html>")).toBeTruthy();
+    await userEvent.clear(screen.getByLabelText("Project-relative HTML path"));
+    await userEvent.type(screen.getByLabelText("Project-relative HTML path"), "pages/home.html");
+    await userEvent.click(screen.getByRole("button", { name: "Save HTML" }));
+    await waitFor(() => expect(calls).toContainEqual({ cmd: "preview_save_html", args: { sessionId: "s1", path: "pages/home.html", html: "<html>serialized</html>" } }));
+  });
+
+  it("uses backend picker apply and undo actions", async () => {
+    mount();
+    await userEvent.click(screen.getByRole("button", { name: /Pick/ }));
+    expect(calls.some((c) => c.cmd === "preview_picker_toggle" && c.args?.enabled === true)).toBe(true);
+    await waitFor(() => expect(events.has("preview-element-picked")).toBe(true));
+    act(() => {
+      events.get("preview-element-picked")?.({ payload: { selector: "#hero", text: "Hello", tag: "DIV", bounds: { x: 0, y: 0, width: 10, height: 10 }, styles: {} } });
+    });
+    expect(await screen.findByText(/DIV · #hero/)).toBeTruthy();
+    await userEvent.clear(screen.getByLabelText("Element value"));
+    await userEvent.type(screen.getByLabelText("Element value"), "Updated");
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() => expect(calls.some((c) => c.cmd === "preview_element_apply" && (c.args?.edit as { value?: string }).value === "Updated")).toBe(true));
+    await userEvent.click(screen.getByRole("button", { name: /Undo/ }));
+    expect(calls.some((c) => c.cmd === "preview_element_undo")).toBe(true);
+  });
+
+  it("composes the captured PNG before using the guarded composer API", async () => {
+    mount();
+    await userEvent.click(screen.getByRole("button", { name: /Capture/ }));
+    expect(await screen.findByRole("img", { name: "Captured preview" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /^Send$/ }));
+    await waitFor(() => expect(composer.sendWithFiles).toHaveBeenCalledTimes(1));
+    const call = vi.mocked(composer.sendWithFiles).mock.calls[0];
+    expect(call).toBeDefined();
+    const [text, files] = call!;
+    expect(text).toContain("Design preview feedback for http://localhost:5173/app");
+    expect(text).toContain("Annotations: 0.");
+    expect(files).toHaveLength(1);
+    const file = files[0];
+    expect(file).toBeDefined();
+    expect(file!.type).toBe("image/png");
+    expect(file!.size).toBe(3);
+    expect(await screen.findByText("Feedback sent through the composer.")).toBeTruthy();
+    expect(calls.some((c) => c.cmd === "preview_result_show")).toBe(true);
+  });
+
+  it("keeps the capture open and visibly reports a guarded send failure", async () => {
+    vi.mocked(composer.sendWithFiles).mockResolvedValueOnce(false);
+    mount();
+    await userEvent.click(screen.getByRole("button", { name: /Capture/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Send$/ }));
+    expect(await screen.findByText(/Feedback was not sent/)).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Captured preview" })).toBeTruthy();
+    expect(calls.some((c) => c.cmd === "preview_result_show")).toBe(false);
+  });
+
+  it("uses the same image composer path for the native preview-result send action", async () => {
+    mount();
+    await userEvent.click(screen.getByRole("button", { name: /Capture/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^Send$/ }));
+    await waitFor(() => expect(composer.sendWithFiles).toHaveBeenCalledTimes(1));
+    vi.mocked(composer.sendWithFiles).mockClear();
+    await waitFor(() => expect(events.has("preview-result-action")).toBe(true));
+    act(() => { events.get("preview-result-action")?.({ payload: "send" }); });
+    await waitFor(() => expect(composer.sendWithFiles).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(calls.some((c) => c.cmd === "preview_result_hide")).toBe(true));
+  });
+});

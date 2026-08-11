@@ -58,6 +58,8 @@ export interface ComposerCtl {
   error: string | null;
   dismissError(): void;
   notifyError(message: string): void;
+  /** Upload generated/local files, compose attachment lines, then send through all composer guards. */
+  sendWithFiles(text: string, files: File[]): Promise<boolean>;
   /** 发送草稿+附件;运行中自动排队。返回是否已接受(发送或排队)。 */
   send(): boolean;
   stop(): void;
@@ -134,12 +136,20 @@ export function useComposer(sessionId: string, feed: ComposerFeed): ComposerCtl 
   }, []);
 
   // 编辑面快照(留档用):cleanup 时拿到的是最后一次已提交状态
-  const snapRef = useRef<{ draft: string; queued: string | null; atts: ComposerAtt[] }>({
+  const snapRef = useRef<{
+    draft: string;
+    queued: string | null;
+    atts: ComposerAtt[];
+    running: boolean;
+    stateSid: string;
+  }>({
     draft: "",
     queued: null,
     atts: [],
+    running,
+    stateSid,
   });
-  snapRef.current = { draft, queued, atts };
+  snapRef.current = { draft, queued, atts, running, stateSid };
   // 当前活跃会话(迟到的发送回执按它守卫,不污染切换后的会话)
   const activeRef = useRef(sessionId);
   activeRef.current = sessionId;
@@ -293,7 +303,13 @@ export function useComposer(sessionId: string, feed: ComposerFeed): ComposerCtl 
 
   /** 上传一个来源并入列附件;失败外显、不阻断后续文件。 */
   const uploadOne = useCallback(
-    async (run: (onProgress: (sent: number, total: number) => void, signal: AbortSignal) => Promise<{ path: string }>, name: string, indeterminate: boolean, fallbackIsImage: boolean) => {
+    async (
+      run: (onProgress: (sent: number, total: number) => void, signal: AbortSignal) => Promise<{ path: string }>,
+      name: string,
+      indeterminate: boolean,
+      fallbackIsImage: boolean,
+      store = true,
+    ): Promise<ComposerAtt | null> => {
       const id = ++uploadSeqRef.current;
       const forSid = sessionId;
       const ctl = new AbortController();
@@ -326,20 +342,24 @@ export function useComposer(sessionId: string, feed: ComposerFeed): ComposerCtl 
         // 不守卫的话它会落进**当前**会话的 composer,而 path 是按旧工作区
         // 算的相对路径——附件行发出去模型根本读不到那个文件(旧 UI
         // useSession.ts:555-571 同款纪元守卫)
-        if (activeRef.current === forSid) {
-          setAtts((list) => [...list, att]);
-        } else {
-          const prev = stashGet(forSid);
-          stashSet(forSid, {
-            draft: prev?.draft ?? "",
-            queued: prev?.queued ?? null,
-            atts: [...(prev?.atts ?? []), att],
-          });
+        if (store) {
+          if (activeRef.current === forSid) {
+            setAtts((list) => [...list, att]);
+          } else {
+            const prev = stashGet(forSid);
+            stashSet(forSid, {
+              draft: prev?.draft ?? "",
+              queued: prev?.queued ?? null,
+              atts: [...(prev?.atts ?? []), att],
+            });
+          }
         }
+        return att;
       } catch (e) {
-        if (!ctl.signal.aborted) {
+        if (!ctl.signal.aborted && activeRef.current === forSid) {
           notifyError(t("chat.uploadFailed", { reason: e instanceof Error ? e.message : String(e) }));
         }
+        return null;
       } finally {
         setUploads((list) => list.filter((u) => u.id !== id));
       }
@@ -375,6 +395,74 @@ export function useComposer(sessionId: string, feed: ComposerFeed): ComposerCtl 
     [sessionId, uploadOne],
   );
 
+  const sendWithFiles = useCallback(
+    async (raw: string, files: File[]): Promise<boolean> => {
+      const text = raw.trim();
+      if (!text && !files.length) return false;
+      const forSid = sessionId;
+      const uploaded: ComposerAtt[] = [];
+      for (const file of files) {
+        const native = nativePathOf(file);
+        const att = await uploadOne(
+          (onProgress, signal) => native
+            ? uploadFilePath(forSid, native)
+            : uploadFileStream(forSid, file, { onProgress, signal }),
+          file.name,
+          !!native || file.size === 0,
+          file.type.startsWith("image/"),
+          false,
+        );
+        if (!att) return false;
+        uploaded.push(att);
+      }
+
+      // The upload belongs to the session epoch in which this operation began. If
+      // navigation won the race, preserve the recoverable draft/attachments in that
+      // session but never send them to the newly active session.
+      if (activeRef.current !== forSid || snapRef.current.stateSid !== forSid) {
+        const prev = stashGet(forSid);
+        stashSet(forSid, {
+          draft: prev?.draft || text,
+          queued: prev?.queued ?? null,
+          atts: [...(prev?.atts ?? []), ...uploaded],
+        });
+        return false;
+      }
+
+      const payload = [text, ...uploaded.map(attLine)].filter(Boolean).join("\n");
+      if (snapRef.current.running || sendingRef.current || snapRef.current.queued) {
+        flushBlockedRef.current = false;
+        clearRetry();
+        setQueued(payload);
+        return true;
+      }
+
+      sendingRef.current = true;
+      try {
+        await sessionSend(forSid, "user-input", { content: b64encode(payload) });
+        // Keep sendingRef set until a frame/running edge proves materialization, just
+        // like send(); a resolved engine ack is not enough to safely direct-send again.
+        return true;
+      } catch (e) {
+        sendingRef.current = false;
+        if (activeRef.current !== forSid) {
+          const prev = stashGet(forSid);
+          stashSet(forSid, {
+            draft: prev?.draft || text,
+            queued: prev?.queued ?? null,
+            atts: [...(prev?.atts ?? []), ...uploaded],
+          });
+          return false;
+        }
+        setDraft((cur) => cur || text);
+        setAtts((cur) => (cur.length ? cur : uploaded));
+        notifyError(t("chat.sendFailed", { reason: e instanceof Error ? e.message : String(e) }));
+        return false;
+      }
+    },
+    [sessionId, uploadOne, clearRetry, notifyError],
+  );
+
   const removeAtt = useCallback((index: number) => {
     setAtts((list) => list.filter((_, i) => i !== index));
   }, []);
@@ -398,6 +486,7 @@ export function useComposer(sessionId: string, feed: ComposerFeed): ComposerCtl 
     error,
     dismissError,
     notifyError,
+    sendWithFiles,
     send,
     stop,
     addFiles,

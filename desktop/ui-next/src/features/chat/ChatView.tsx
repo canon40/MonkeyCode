@@ -10,7 +10,7 @@
 // 精确补页(session_history 以 offset 为终点,不盲翻),补页提交前的空窗
 // 用短时重试兜(旧 chat.tsx jumpWithRetry 语义);大纲当前项 activeSeq 由
 // rAF 节流的滚动跟踪算出(lib/util/scrollAnchor.outlineActiveSeq)。
-import { IconDots, IconFolderOpen, IconPencil, IconX } from "@tabler/icons-react";
+import { IconBrowser, IconDots, IconFolderOpen, IconPencil, IconX } from "@tabler/icons-react";
 import {
   useCallback,
   useEffect,
@@ -27,7 +27,7 @@ import { useApprovalHotkeys } from "@/app/shortcuts";
 import { useI18n } from "@/lib/i18n";
 import { sessionOutline, type OutlineItem } from "@/lib/ipc/controls";
 import { repoChanges, repoReveal } from "@/lib/ipc/repo";
-import { sessionFrame, sessionPatch, type SessionMeta } from "@/lib/ipc/sessions";
+import { designTemplatePreviewRead, sessionFrame, sessionPatch, type SessionMeta } from "@/lib/ipc/sessions";
 import { onNativeFileDrop, uploadFileURL } from "@/lib/ipc/uploads";
 import { workspaceRelativePath } from "@/lib/util/markdownPaths";
 import { anchorScrollTop, findAnchor, outlineActiveSeq } from "@/lib/util/scrollAnchor";
@@ -40,6 +40,8 @@ import { LogList } from "./LogList";
 import { OutlineNav, outlineEntriesOf } from "./OutlineNav";
 import { TaskPanel } from "./TaskPanel";
 import { FilesDrawer } from "@/features/files/FilesDrawer";
+import { DesignPreviewWorkbench } from "@/features/design/DesignPreviewWorkbench";
+import { newestAgentPreviewUrl, normalizePreviewUrl } from "@/features/design/previewUrl";
 import { useSessionFeed } from "./useSessionFeed";
 
 const PIN_THRESHOLD = 40; // 距底多少像素内算"贴底"(scroll 只做进入贴底的单向判定)
@@ -82,6 +84,9 @@ export function ChatView({
   // lastSeq 也喂给 composer:帧到达才是"上行已被壳接收"的可信信号
   // (useComposer 的 ComposerFeed 头注写了三个信号各自兜住的故障)
   const composer = useComposer(meta.id, { running: state.running, historyLoaded, lastSeq: state.lastSeq });
+  const detectedPreviewUrl = useMemo(() => newestAgentPreviewUrl(state.items), [state.items]);
+  const [preview, setPreview] = useState<{ sessionId: string; url: string } | null>(null);
+  const previewUrl = preview?.sessionId === meta.id ? preview.url : null;
   // 稳定引用:传给 memo 化 LogList 的回调、拖拽/原生落盘回调都经它取最新
   // ctl,不随 composer 对象每渲染换新
   const composerRef = useRef(composer);
@@ -344,7 +349,14 @@ export function ChatView({
     },
     [t],
   );
+  const openPreviewMarkdownLink = useCallback((raw: string): boolean => {
+    const url = normalizePreviewUrl(raw);
+    if (!url) return false;
+    setPreview({ sessionId: metaRef.current.id, url });
+    return true;
+  }, []);
   const uploadUrl = useCallback((p: string) => uploadFileURL(metaRef.current.id, p), []);
+  const loadDesignPreview = useCallback((p: string) => designTemplatePreviewRead(metaRef.current.id, p), []);
   const loadFullTool = useCallback((seq: number) => sessionFrame(metaRef.current.id, seq), []);
 
   // ==== 标题重命名(D4):h1 双击进输入态。提交只发 sessionPatch,不乐观
@@ -607,6 +619,7 @@ export function ChatView({
       : null;
 
   return (
+    <div className="flex min-w-0 flex-1 overflow-hidden">
     <main
       className="relative flex min-w-0 flex-1 flex-col bg-base-100"
       onDragEnter={onDragEnter}
@@ -682,6 +695,16 @@ export function ChatView({
             </h1>
           )}
         </div>
+        <button
+          type="button"
+          aria-label="Open design preview"
+          title={detectedPreviewUrl ?? "No localhost URL in the latest assistant message"}
+          className="btn btn-ghost btn-square btn-sm text-base-content/60"
+          disabled={!detectedPreviewUrl}
+          onClick={() => detectedPreviewUrl && setPreview({ sessionId: meta.id, url: detectedPreviewUrl })}
+        >
+          <IconBrowser size={16} stroke={1.75} aria-hidden />
+        </button>
         {/* §7:indicator 壳与徽标是头部非交互子节点,必须各自带拖拽属性 */}
         <div data-tauri-drag-region="" className={changesCount > 0 ? "indicator" : undefined}>
           {changesCount > 0 && (
@@ -847,7 +870,9 @@ export function ChatView({
             flashSeq={flashSeq ?? undefined}
             onOpenChildSession={setChildId}
             uploadUrl={uploadUrl}
+            loadDesignPreview={loadDesignPreview}
             onLocalLink={revealMarkdownLink}
+            onPreviewUrl={openPreviewMarkdownLink}
             workdir={meta.workdir}
             loadFullTool={loadFullTool}
           />
@@ -876,6 +901,17 @@ export function ChatView({
       )}
       {childId && <ChildSessionModal id={childId} workdir={meta.workdir} onClose={() => setChildId(null)} />}
     </main>
+    {previewUrl && (
+      <DesignPreviewWorkbench
+        key={meta.id}
+        sessionId={meta.id}
+        initialUrl={previewUrl}
+        composer={composer}
+        obscured={drawerOpen || !!childId}
+        onClose={() => setPreview(null)}
+      />
+    )}
+    </div>
   );
 }
 
@@ -903,6 +939,7 @@ function ChildSessionModal({ id, workdir, onClose }: { id: string; workdir?: str
   // 会把整列消息(每张工具卡的 effect)一起拖着重跑——主路径为此早就用了
   // useCallback(见上方 uploadUrl/loadFullTool),这里此前漏了
   const uploadUrl = useCallback((p: string) => uploadFileURL(id, p), [id]);
+  const loadDesignPreview = useCallback((p: string) => designTemplatePreviewRead(id, p), [id]);
   const loadFullTool = useCallback((seq: number) => sessionFrame(id, seq), [id]);
   return (
     <div className="modal modal-open" role="dialog" aria-label={t("chat.child.title")}>
@@ -923,7 +960,7 @@ function ChildSessionModal({ id, workdir, onClose }: { id: string; workdir?: str
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-          <LogList state={state} sessionId={id} readonly uploadUrl={uploadUrl} workdir={workdir} loadFullTool={loadFullTool} />
+          <LogList state={state} sessionId={id} readonly uploadUrl={uploadUrl} loadDesignPreview={loadDesignPreview} workdir={workdir} loadFullTool={loadFullTool} />
         </div>
       </div>
       <div className="modal-backdrop cursor-pointer" onClick={onClose} aria-hidden />

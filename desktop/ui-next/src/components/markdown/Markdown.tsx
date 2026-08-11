@@ -106,7 +106,7 @@ export function renderMarkdown(source: string): string {
   return DOMPurify.sanitize(template.innerHTML, { USE_PROFILES: { html: true } });
 }
 
-function onContainerClick(e: MouseEvent<HTMLElement>, onLocalLink?: (path: string) => void) {
+function onContainerClick(e: MouseEvent<HTMLElement>, onLocalLink?: (path: string) => void, onUrlLink?: (url: string) => boolean) {
   const target = e.target as HTMLElement;
   const copyBtn = target.closest<HTMLElement>("[data-md-copy]");
   if (copyBtn) {
@@ -135,7 +135,9 @@ function onContainerClick(e: MouseEvent<HTMLElement>, onLocalLink?: (path: strin
       onLocalLink?.(local);
       return;
     }
-    openExternal(link.getAttribute("href") ?? "");
+    const href = link.getAttribute("href") ?? "";
+    if (onUrlLink?.(href)) return;
+    openExternal(href);
   }
 }
 
@@ -251,6 +253,7 @@ export function Markdown({
   className,
   localImageUrl,
   onLocalLink,
+  onUrlLink,
 }: {
   source: string;
   className?: string;
@@ -258,6 +261,8 @@ export function Markdown({
   localImageUrl?: (path: string) => Promise<string>;
   /** 本地链接点击代理(reveal 到文件管理器等)。 */
   onLocalLink?: (path: string) => void;
+  /** Return true to claim an absolute URL (design preview intercept). */
+  onUrlLink?: (url: string) => boolean;
 }) {
   const { locale } = useI18n(); // 复制按钮文案随 locale 重渲
   const root = useRef<HTMLDivElement>(null);
@@ -324,7 +329,7 @@ export function Markdown({
       key="md"
       ref={root}
       className={`md select-text ${className ?? ""}`}
-      onClick={(e) => onContainerClick(e, onLocalLink)}
+      onClick={(e) => onContainerClick(e, onLocalLink, onUrlLink)}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
