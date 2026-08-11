@@ -1,7 +1,6 @@
 import { IconCheck } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
 
-import { UploadImg } from "@/components/media/UploadImg";
 import { useI18n } from "@/lib/i18n";
 import { localFrameSender, sendDesignSelectionVia, type FrameSender } from "@/lib/ipc/approvals";
 import type {
@@ -12,6 +11,31 @@ import type {
 } from "@/lib/protocol/types";
 
 type PreviewState = { status: "idle" | "loading" | "error" } | { status: "ready"; url: string };
+
+function DesignTemplateImage({ title, path, uploadUrl }: { title: string; path: string; uploadUrl?: (path: string) => Promise<string> }) {
+  const { t } = useI18n();
+  const [state, setState] = useState<PreviewState>({ status: "idle" });
+
+  useEffect(() => {
+    if (!uploadUrl) return;
+    let alive = true;
+    void uploadUrl(path).then(
+      (url) => alive && setState(url ? { status: "ready", url } : { status: "error" }),
+      () => alive && setState({ status: "error" }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [path, uploadUrl]);
+
+  if (!uploadUrl || state.status === "error") {
+    return <span className="flex size-full items-center justify-center text-xs text-base-content/50">{t("chat.design.previewError")}</span>;
+  }
+  if (state.status !== "ready") {
+    return <span className="flex size-full items-center justify-center text-xs text-base-content/50">{t("chat.design.previewLoading")}</span>;
+  }
+  return <img src={state.url} alt={title} className="size-full object-cover" onError={() => setState({ status: "error" })} />;
+}
 
 export function createDesignTemplateBlobUrl(html: string): string {
   return URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
@@ -92,9 +116,9 @@ function DesignTemplatePreview({
 
   const view = resolveDesignTemplatePreviewState(state.status, Boolean(fallbackPath && uploadUrl));
   return (
-    <div ref={host} data-preview-state={preview.type === "html" ? state.status : undefined} className="pointer-events-none aspect-[4/3] w-full overflow-hidden bg-base-200">
-      {mounted && preview.type === "image" && uploadUrl && (
-        <UploadImg load={() => uploadUrl(preview.path)} alt={title} className="size-full object-cover" />
+    <div ref={host} data-preview-state={preview.type === "html" ? state.status : undefined} className="pointer-events-none aspect-video w-full overflow-hidden bg-base-200">
+      {mounted && preview.type === "image" && (
+        <DesignTemplateImage key={preview.path} title={title} path={preview.path} uploadUrl={uploadUrl} />
       )}
       {mounted && preview.type === "html" && view.showHtml && state.status === "ready" && (
         <iframe
@@ -106,8 +130,8 @@ function DesignTemplatePreview({
           className="block size-full border-0"
         />
       )}
-      {mounted && preview.type === "html" && view.showFallback && fallbackPath && uploadUrl && (
-        <UploadImg load={() => uploadUrl(fallbackPath)} alt={title} className="size-full object-cover" />
+      {mounted && preview.type === "html" && view.showFallback && fallbackPath && (
+        <DesignTemplateImage key={fallbackPath} title={title} path={fallbackPath} uploadUrl={uploadUrl} />
       )}
       {mounted && preview.type === "html" && view.showLoading && (
         <span className="flex size-full items-center justify-center text-xs text-base-content/50">{t("chat.design.previewLoading")}</span>
@@ -215,12 +239,12 @@ export function DesignTemplateSelectionCard({
                 {candidate.recommended && <span className="badge badge-primary badge-sm absolute end-1.5 top-1.5 z-10">{t("chat.design.recommended")}</span>}
                 {preview ? (
                   <DesignTemplatePreview title={candidate.title} preview={preview} fallbackPath={preview.type === "html" ? candidate.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
-                ) : <div className="aspect-[4/3] bg-base-200" />}
-                <span className="flex min-w-0 flex-1 flex-col p-3">
-                  <strong className="line-clamp-2 break-words text-xs font-semibold leading-snug">{candidate.title}</strong>
+                ) : <div className="aspect-video bg-base-200" />}
+                <span className="flex min-w-0 flex-1 flex-col p-2.5">
+                  <strong className="line-clamp-1 break-words text-xs font-semibold leading-snug">{candidate.title}</strong>
                   {candidate.description && <span className="mt-1 line-clamp-2 break-words text-xs leading-snug text-base-content/50">{candidate.description}</span>}
                   {candidate.reason && (
-                    <span className="mt-2 line-clamp-3 break-words border-t border-base-200 pt-2 text-xs leading-snug text-base-content/70">
+                    <span className="mt-1.5 line-clamp-2 break-words border-t border-base-200 pt-1.5 text-xs leading-snug text-base-content/70">
                       <strong>{t("chat.design.reason")}</strong>{candidate.reason}
                     </span>
                   )}

@@ -30,7 +30,9 @@ describe("DesignTemplateSelectionCard", () => {
     const clean = screen.getByRole("button", { name: /Clean/ });
     expect(clean.className).toContain("flex");
     expect(clean.parentElement?.className).toContain("grid-cols-3");
-    expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-3");
+    expect(clean.querySelector(".aspect-video")).toBeTruthy();
+    expect(clean.querySelector("strong")?.className).toContain("line-clamp-1");
+    expect(screen.getByText(/Matches your brief/).className).toContain("line-clamp-2");
     expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
@@ -61,6 +63,18 @@ describe("DesignTemplateSelectionCard", () => {
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="child" readonly />);
     expect(screen.getByRole("status").textContent).toContain("未答复");
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("shows an error instead of a blank image preview when reading fails", async () => {
+    render(
+      <DesignTemplateSelectionCard
+        item={{ ...ITEM, items: [ITEM.items[2]!] }}
+        sessionId="s1"
+        sendFrame={vi.fn()}
+        uploadUrl={async () => { throw new Error("missing preview"); }}
+      />,
+    );
+    expect(await screen.findByText("动态预览加载失败")).toBeTruthy();
   });
 
   it("creates UTF-8 HTML blobs and uses an opaque script sandbox with image fallback", async () => {
