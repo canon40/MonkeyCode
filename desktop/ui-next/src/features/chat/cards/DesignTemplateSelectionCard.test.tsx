@@ -23,7 +23,7 @@ const ITEM: DesignTemplateSelectionItem = {
 afterEach(() => vi.restoreAllMocks());
 
 describe("DesignTemplateSelectionCard", () => {
-  it("renders recommendation, trusted reason, optional refinement and all actions", () => {
+  it("renders recommendation, trusted reason, optional refinement and the three actions", () => {
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={vi.fn()} />);
     expect(screen.getByText("推荐")).toBeTruthy();
     expect(screen.getByText(/Matches your brief/)).toBeTruthy();
@@ -46,26 +46,33 @@ describe("DesignTemplateSelectionCard", () => {
     expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "不使用模板" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "取消" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "取消" })).toBeNull();
   });
 
-  it("locks while sending, unlocks with retry on failure, then becomes terminal on success", async () => {
+  it("confirms the selected design before sending, retries on failure, then becomes terminal", async () => {
     let rejectFirst = true;
     const sender = vi.fn(async () => {
       if (rejectFirst) throw new Error("offline");
     });
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} />);
     await userEvent.click(screen.getByRole("button", { name: /Clean/ }));
-    const select = screen.getByRole("button", { name: "选择" });
-    await userEvent.click(select);
+    await userEvent.click(screen.getByRole("button", { name: "选择" }));
+
+    expect(sender).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "按这个设计开发" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "重新选择" })).toBeTruthy();
+    expect(screen.getByText("Clean")).toBeTruthy();
+
+    const confirm = screen.getByRole("button", { name: "按这个设计开发" });
+    await userEvent.click(confirm);
     expect((await screen.findByRole("alert")).textContent).toContain("提交失败，请重试");
-    expect((select as HTMLButtonElement).disabled).toBe(false);
+    expect((confirm as HTMLButtonElement).disabled).toBe(false);
 
     rejectFirst = false;
-    await userEvent.click(select);
+    await userEvent.click(confirm);
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("已选择 · Clean"));
     expect(sender).toHaveBeenLastCalledWith("design/selection/respond", { request_id: "d1", action: "select", selected_id: "clean" });
-    expect(screen.queryByRole("button", { name: "选择" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "按这个设计开发" })).toBeNull();
   });
 
   it("renders open cards readonly without actions", () => {

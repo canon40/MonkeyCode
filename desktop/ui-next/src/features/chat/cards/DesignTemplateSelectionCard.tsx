@@ -184,6 +184,7 @@ export function DesignTemplateSelectionCard({
   const [selectedId, setSelectedId] = useState<string>();
   const [refinement, setRefinement] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
   const [sent, setSent] = useState<DesignSelectionResponse>();
 
@@ -280,7 +281,6 @@ export function DesignTemplateSelectionCard({
         )}
         <div className={`flex min-w-0 flex-wrap items-center justify-end gap-2 ${item.allowedActions.next && item.refinement?.enabled ? "mt-3" : ""}`}>
           {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
-          {item.allowedActions.cancel && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("cancel")}>{t("chat.design.cancel")}</button>}
           {item.allowedActions.direct && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("direct")}>{t("chat.design.direct")}</button>}
           {item.allowedActions.next && <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => void submit("next")}>{t("chat.design.next")}</button>}
           {item.allowedActions.select && <button type="button" className="btn btn-primary btn-sm" disabled={submitting || !validSelectedId} onClick={() => void submit("select")}>{submitting ? t("chat.design.submitting") : t("chat.design.select")}</button>}

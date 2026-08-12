@@ -367,7 +367,6 @@ export const zh = {
   "chat.design.select": "选择",
   "chat.design.next": "换一批",
   "chat.design.direct": "不使用模板",
-  "chat.design.cancel": "取消",
   "chat.design.submitting": "提交中…",
   "chat.design.submitFailed": "提交失败，请重试",
   "chat.design.previewLoading": "加载动态预览…",
