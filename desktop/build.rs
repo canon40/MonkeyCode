@@ -41,6 +41,7 @@ fn main() {
                 "window_system_menu",
                 "list_wsl_distros",
                 "wsl_workdir_base",
+                "resolve_runtime_path",
                 "engine_restart",
                 "engine_status",
                 "probe_log",

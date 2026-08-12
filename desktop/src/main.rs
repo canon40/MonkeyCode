@@ -1293,6 +1293,7 @@ fn main() {
             driver::engine_status,
             driver::engine_caps,
             driver::wsl_workdir_base,
+            driver::resolve_runtime_path,
             browser::browser_status,
             browser::browser_repair,
             driver::sessions_list,

@@ -22,7 +22,17 @@ interface Op {
   args?: Record<string, unknown>;
 }
 
-function stubShell({ models = [] }: { models?: ModelInfo[] } = {}) {
+function stubShell({
+  models = [],
+  directoryPath = null,
+  runtimePath,
+  directoryResult,
+}: {
+  models?: ModelInfo[];
+  directoryPath?: string | null;
+  runtimePath?: string;
+  directoryResult?: Promise<string | null>;
+} = {}) {
   const ops: Op[] = [];
   const listeners = new Map<string, (e: { payload: unknown }) => void>();
   (window as unknown as { __TAURI__?: unknown }).__TAURI__ = {
@@ -40,6 +50,10 @@ function stubShell({ models = [] }: { models?: ModelInfo[] } = {}) {
         if (cmd === "session_call") return Promise.resolve({ result: {} });
         if (cmd === "upload_begin") return Promise.resolve({ handle: 9 });
         if (cmd === "upload_finish") return Promise.resolve({ path: ".monkeycode/uploads/shot.png" });
+        if (cmd === "plugin:dialog|open") return directoryResult ?? Promise.resolve(directoryPath);
+        if (cmd === "resolve_runtime_path") return Promise.resolve(runtimePath ?? directoryPath);
+        if (cmd === "wsl_workdir_base") return Promise.resolve(null);
+        if (cmd === "get_config") return Promise.resolve(null);
         return Promise.resolve(null);
       },
     },
@@ -80,6 +94,31 @@ const sends = (ops: Op[], ftype: string) =>
   ops.filter((o) => o.cmd === "session_send" && (o.args?.ftype as string) === ftype);
 const calls = (ops: Op[], kind: string) =>
   ops.filter((o) => o.cmd === "session_call" && (o.args?.kind as string) === kind);
+
+describe("设计资料目录", () => {
+  it("使用 Agent 运行环境中的路径", async () => {
+    stubShell({ directoryPath: "\\\\wsl$\\Ubuntu\\home\\me\\materials", runtimePath: "/home/me/materials" });
+    render(<ChatView meta={META} />);
+    const box = (await ready()) as HTMLTextAreaElement;
+    await userEvent.click(screen.getByRole("button", { name: "设计资料目录" }));
+    await waitFor(() => expect(box.value).toBe("设计资料目录：/home/me/materials"));
+  });
+
+  it("会话切换后丢弃旧会话的目录选择结果", async () => {
+    let resolveDirectory!: (path: string | null) => void;
+    const directoryResult = new Promise<string | null>((resolve) => {
+      resolveDirectory = resolve;
+    });
+    stubShell({ directoryResult });
+    const { rerender } = render(<ChatView meta={META} />);
+    await ready();
+    await userEvent.click(screen.getByRole("button", { name: "设计资料目录" }));
+    rerender(<ChatView meta={{ ...META, id: "s2", title: "另一个会话" }} />);
+    resolveDirectory("/tmp/from-s1");
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "消息输入" })).toBeTruthy());
+    expect((screen.getByRole("textbox", { name: "消息输入" }) as HTMLTextAreaElement).value).not.toContain("/tmp/from-s1");
+  });
+});
 
 describe("斜杠指令面板", () => {
   it("敲 / 就地弹出;前缀过滤优先;↑↓ 循环;↩ 填入并保焦点;不发送消息", async () => {

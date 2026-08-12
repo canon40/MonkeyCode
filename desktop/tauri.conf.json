@@ -69,6 +69,7 @@
             "allow-preview-save-html",
             "allow-list-wsl-distros",
             "allow-wsl-workdir-base",
+            "allow-resolve-runtime-path",
             "allow-engine-status",
             "allow-engine-caps",
             "allow-browser-status",

@@ -391,6 +391,11 @@ pub async fn wsl_workdir_base(host: State<'_, DriverHost>) -> Result<Option<Stri
 }
 
 #[tauri::command]
+pub async fn resolve_runtime_path(host: State<'_, DriverHost>, path: String) -> Result<String, String> {
+    host.get()?.resolve_workdir(&path)
+}
+
+#[tauri::command]
 pub async fn sessions_list(host: State<'_, DriverHost>) -> Result<Value, String> {
     host.get()?.sessions_list().await
 }
