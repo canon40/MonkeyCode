@@ -216,6 +216,47 @@ export function DesignTemplateSelectionCard({
     }
   };
   const selectable = item.allowedActions.select && !submitting;
+  const selected = item.items.find((candidate) => candidate.id === validSelectedId);
+
+  if (confirming && selected) {
+    const preview = selected.image
+      ? { type: "image" as const, path: selected.image }
+      : selected.preview;
+    return (
+      <section className="card card-border w-full max-w-[760px] overflow-hidden bg-base-100" aria-label={item.title || t("chat.design.title")}>
+        <header className="border-b border-base-300 px-4 py-3.5">
+          <h3 className="text-sm font-semibold leading-5">{t("chat.design.selected", { title: selected.title })}</h3>
+        </header>
+        <div className="p-4">
+          <div className="mx-auto max-w-lg overflow-hidden rounded-xl border border-primary bg-primary/5">
+            {preview && (
+              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
+            )}
+            {selected.description && <p className="px-3 py-2.5 text-xs leading-relaxed text-base-content/60">{selected.description}</p>}
+          </div>
+        </div>
+        <footer className="border-t border-base-300 bg-base-200/40 px-4 py-3">
+          {item.allowedActions.next && item.refinement?.enabled && (
+            <textarea
+              rows={2}
+              className="block min-h-16 w-full resize-none rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-xs leading-5 outline-none transition-colors placeholder:text-base-content/40 focus:border-primary"
+              value={refinement}
+              disabled={submitting}
+              aria-label={t("chat.design.refinement")}
+              placeholder={item.refinement.placeholder || t("chat.design.refinement")}
+              onChange={(event) => setRefinement(event.target.value)}
+            />
+          )}
+          <div className={`flex min-w-0 flex-wrap items-center justify-end gap-2 ${item.allowedActions.next && item.refinement?.enabled ? "mt-3" : ""}`}>
+            {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
+            {item.allowedActions.next && <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => { setConfirming(false); void submit("next"); }}>{t("chat.design.next")}</button>}
+            <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => { setConfirming(false); setFailed(false); }}>{t("chat.design.reselect")}</button>
+            <button type="button" className="btn btn-primary btn-sm" disabled={submitting} onClick={() => void submit("select")}>{submitting ? t("chat.design.submitting") : t("chat.design.confirmDevelopment")}</button>
+          </div>
+        </footer>
+      </section>
+    );
+  }
 
   return (
     <section className="card card-border w-full max-w-[760px] overflow-hidden bg-base-100" aria-label={item.title || t("chat.design.title")}>
@@ -240,7 +281,10 @@ export function DesignTemplateSelectionCard({
               disabled={!selectable}
               aria-pressed={active}
               className={`group relative flex min-w-0 flex-col overflow-hidden rounded-xl border text-start ${active ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20" : "border-base-300 bg-base-100"} ${selectable ? "cursor-pointer transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-base-content/30 hover:shadow-sm" : "cursor-default"}`}
-              onClick={() => setSelectedId(candidate.id)}
+              onClick={() => {
+                setSelectedId(candidate.id);
+                setConfirming(false);
+              }}
             >
               <span className="relative block w-full overflow-hidden border-b border-base-300 bg-base-200">
                 {preview ? (
@@ -283,7 +327,7 @@ export function DesignTemplateSelectionCard({
           {failed && <span role="alert" className="me-auto text-xs text-error">{t("chat.design.submitFailed")}</span>}
           {item.allowedActions.direct && <button type="button" className="btn btn-ghost btn-xs" disabled={submitting} onClick={() => void submit("direct")}>{t("chat.design.direct")}</button>}
           {item.allowedActions.next && <button type="button" className="btn btn-outline btn-xs" disabled={submitting} onClick={() => void submit("next")}>{t("chat.design.next")}</button>}
-          {item.allowedActions.select && <button type="button" className="btn btn-primary btn-sm" disabled={submitting || !validSelectedId} onClick={() => void submit("select")}>{submitting ? t("chat.design.submitting") : t("chat.design.select")}</button>}
+          {item.allowedActions.select && <button type="button" className="btn btn-primary btn-sm" disabled={submitting || !validSelectedId} onClick={() => setConfirming(true)}>{t("chat.design.select")}</button>}
         </div>
       </footer>
     </section>

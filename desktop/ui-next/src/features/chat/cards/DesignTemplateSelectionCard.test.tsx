@@ -61,7 +61,9 @@ describe("DesignTemplateSelectionCard", () => {
     expect(sender).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "按这个设计开发" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "重新选择" })).toBeTruthy();
-    expect(screen.getByText("Clean")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
+    expect(screen.getByText("已选择：Clean")).toBeTruthy();
 
     const confirm = screen.getByRole("button", { name: "按这个设计开发" });
     await userEvent.click(confirm);
@@ -73,6 +75,34 @@ describe("DesignTemplateSelectionCard", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("已选择 · Clean"));
     expect(sender).toHaveBeenLastCalledWith("design/selection/respond", { request_id: "d1", action: "select", selected_id: "clean" });
     expect(screen.queryByRole("button", { name: "按这个设计开发" })).toBeNull();
+  });
+
+  it("sends next with refinement text from the confirmation view", async () => {
+    const sender = vi.fn();
+    render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} />);
+    await userEvent.click(screen.getByRole("button", { name: /Clean/ }));
+    await userEvent.click(screen.getByRole("button", { name: "选择" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" }), "更亮一点");
+    await userEvent.click(screen.getByRole("button", { name: "换一批" }));
+    await waitFor(() =>
+      expect(sender).toHaveBeenCalledWith("design/selection/respond", { request_id: "d1", action: "next", refinement_text: "更亮一点" }),
+    );
+    expect(screen.getByRole("status").textContent).toContain("已请求换一批");
+  });
+
+  it("requires selection again when refreshed candidates invalidate the confirmation", async () => {
+    const sender = vi.fn();
+    const { rerender } = render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} />);
+    await userEvent.click(screen.getByRole("button", { name: /Clean/ }));
+    await userEvent.click(screen.getByRole("button", { name: "选择" }));
+
+    const refreshed = { ...ITEM, items: ITEM.items.filter((candidate) => candidate.id !== "clean") };
+    rerender(<DesignTemplateSelectionCard item={refreshed} sessionId="s1" sendFrame={sender} />);
+    await userEvent.click(screen.getByRole("button", { name: /Bold/ }));
+
+    expect(screen.getByRole("button", { name: "选择" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "按这个设计开发" })).toBeNull();
+    expect(sender).not.toHaveBeenCalled();
   });
 
   it("renders open cards readonly without actions", () => {
