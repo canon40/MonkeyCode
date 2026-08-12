@@ -35,3 +35,8 @@ export function newestAgentPreviewUrl(items: ChatItem[]): string | null {
   }
   return null;
 }
+
+export function currentTurnAgentPreviewUrl(items: ChatItem[]): string | null {
+  const lastUserIndex = items.findLastIndex((item) => item.kind === "user");
+  return newestAgentPreviewUrl(items.slice(lastUserIndex + 1));
+}

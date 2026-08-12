@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,15 +8,18 @@ import { DesignPreviewWorkbench } from "./DesignPreviewWorkbench";
 type EventCb = (event: { payload: unknown }) => void;
 let calls: { cmd: string; args?: Record<string, unknown> }[];
 let events: Map<string, EventCb>;
+let pendingCreates: (() => void)[];
+let deferCreates: boolean;
 
 beforeEach(() => {
-  calls = []; events = new Map();
+  calls = []; events = new Map(); pendingCreates = []; deferCreates = false;
   vi.mocked(composer.sendWithFiles).mockReset().mockResolvedValue(true);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ x: 400, y: 80, left: 400, top: 80, right: 1000, bottom: 480, width: 600, height: 400, toJSON() {} });
   vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
     core: { invoke: async (cmd: string, args?: Record<string, unknown>) => {
       calls.push({ cmd, args });
+      if (cmd === "preview_create" && deferCreates) await new Promise<void>((resolve) => pendingCreates.push(resolve));
       if (cmd === "preview_serialize") queueMicrotask(() => events.get("preview-serialized")?.({ payload: { requestId: args?.requestId, html: "<html>serialized</html>" } }));
       if (cmd === "preview_capture") queueMicrotask(() => events.get("preview-captured")?.({ payload: { requestId: args?.requestId, dataUrl: "data:image/png;base64,AQID" } }));
     } },
@@ -42,6 +46,21 @@ describe("DesignPreviewWorkbench native lifecycle", () => {
     await waitFor(() => expect(calls.some((c) => c.cmd === "preview_show")).toBe(true));
     view.unmount();
     expect(calls.some((c) => c.cmd === "preview_destroy")).toBe(true);
+  });
+
+  it("does not let the StrictMode cleanup destroy the active preview", async () => {
+    deferCreates = true;
+    render(<StrictMode><DesignPreviewWorkbench sessionId="s1" initialUrl="http://localhost:5173/app" composer={composer} obscured={false} onClose={() => {}} /></StrictMode>);
+    await waitFor(() => expect(calls.filter((c) => c.cmd === "preview_create")).toHaveLength(2));
+
+    await act(async () => {
+      pendingCreates.splice(0).forEach((resolve) => resolve());
+      await Promise.resolve();
+    });
+
+    expect(calls.filter((c) => c.cmd === "preview_destroy")).toHaveLength(1);
+    expect(calls.at(-1)?.cmd).not.toBe("preview_destroy");
+    expect(calls.some((c) => c.cmd === "preview_set_bounds")).toBe(true);
   });
 
   it("serializes before editing and saves project-relative HTML through the backend", async () => {

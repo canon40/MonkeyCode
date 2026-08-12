@@ -41,7 +41,7 @@ import { OutlineNav, outlineEntriesOf } from "./OutlineNav";
 import { TaskPanel } from "./TaskPanel";
 import { FilesDrawer } from "@/features/files/FilesDrawer";
 import { DesignPreviewWorkbench } from "@/features/design/DesignPreviewWorkbench";
-import { newestAgentPreviewUrl, normalizePreviewUrl } from "@/features/design/previewUrl";
+import { currentTurnAgentPreviewUrl, newestAgentPreviewUrl, normalizePreviewUrl } from "@/features/design/previewUrl";
 import { useSessionFeed } from "./useSessionFeed";
 
 const PIN_THRESHOLD = 40; // 距底多少像素内算"贴底"(scroll 只做进入贴底的单向判定)
@@ -85,6 +85,7 @@ export function ChatView({
   // (useComposer 的 ComposerFeed 头注写了三个信号各自兜住的故障)
   const composer = useComposer(meta.id, { running: state.running, historyLoaded, lastSeq: state.lastSeq });
   const detectedPreviewUrl = useMemo(() => newestAgentPreviewUrl(state.items), [state.items]);
+  const currentTurnPreviewUrl = useMemo(() => currentTurnAgentPreviewUrl(state.items), [state.items]);
   const [preview, setPreview] = useState<{ sessionId: string; url: string } | null>(null);
   const previewUrl = preview?.sessionId === meta.id ? preview.url : null;
   // 稳定引用:传给 memo 化 LogList 的回调、拖拽/原生落盘回调都经它取最新
@@ -532,10 +533,13 @@ export function ChatView({
   const [changesToken, setChangesToken] = useState(0);
   const prevTurnEnded = useRef(false);
   useEffect(() => {
-    // 轮次结束边沿:改动列表需要重拉(抽屉开着时立即,关着时下次打开取新)
-    if (state.turnEnded && !prevTurnEnded.current) setChangesToken((n) => n + 1);
+    const turnJustEnded = state.turnEnded && !prevTurnEnded.current;
+    if (turnJustEnded) {
+      setChangesToken((n) => n + 1);
+      if (currentTurnPreviewUrl) setPreview({ sessionId: meta.id, url: currentTurnPreviewUrl });
+    }
     prevTurnEnded.current = state.turnEnded;
-  }, [state.turnEnded]);
+  }, [currentTurnPreviewUrl, meta.id, state.turnEnded]);
   // 改动数徽标:轮末(changesToken 边沿)拉一次计数;浏览器模式 repoChanges
   // 自身降级空值,失败静默归零(徽标是提示,不是错误面)。徽标 >0 时点
   // 文件钮直达抽屉「改动」页。
@@ -619,7 +623,7 @@ export function ChatView({
       : null;
 
   return (
-    <div className="flex min-w-0 flex-1 overflow-hidden">
+    <div data-design-preview-open={previewUrl ? "true" : undefined} className="flex min-w-0 flex-1 overflow-hidden">
     <main
       className="relative flex min-w-0 flex-1 flex-col bg-base-100"
       onDragEnter={onDragEnter}

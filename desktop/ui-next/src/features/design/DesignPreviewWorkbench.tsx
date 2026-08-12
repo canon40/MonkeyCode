@@ -98,7 +98,7 @@ export function DesignPreviewWorkbench({
   const createdRef = useRef(false);
   const latestRef = useRef({ sessionId, initialUrl });
   latestRef.current = { sessionId, initialUrl };
-  const [paneWidth, setPaneWidth] = useState(520);
+  const [paneWidth, setPaneWidth] = useState<number | string>("65%");
   const [address, setAddress] = useState(initialUrl);
   const [tab, setTab] = useState<"preview" | "code">("preview");
   const [zoom, setZoom] = useState(100);
@@ -172,7 +172,7 @@ export function DesignPreviewWorkbench({
       starting = true;
       void previewCreate(url, { x: r.left, y: r.top, width: r.width, height: r.height }).then(() => {
         starting = false;
-        if (liveRef.current !== generation) return previewDestroy();
+        if (liveRef.current !== generation) return;
         createdRef.current = true;
         bounds();
       }, (error) => { starting = false; report(error); });

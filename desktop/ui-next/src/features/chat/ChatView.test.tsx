@@ -118,6 +118,29 @@ describe("聊天视图", () => {
     await waitFor(() => expect(screen.getByText(/再跑测试/)).toBeTruthy());
   });
 
+  it("当前轮设计完成后自动打开预览并标记压缩布局", async () => {
+    const { emit } = stubShell();
+    const { container } = render(<ChatView meta={META} />);
+    await waitFor(() => expect(screen.getByText("帮我修 bug")).toBeTruthy());
+
+    emit("frames:s1", [
+      { type: "user-input", data: { content: b64encode("设计页面") }, timestamp: 3, seq: 3 },
+      { type: "task-started", timestamp: 4, seq: 4 },
+      {
+        type: "task-running",
+        kind: "acp_event",
+        data: { update: { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "完成：http://127.0.0.1:49173/" } } },
+        timestamp: 5,
+        seq: 5,
+      },
+    ]);
+    expect(container.querySelector('[data-design-preview-open="true"]')).toBeNull();
+
+    emit("frames:s1", [{ type: "task-ended", timestamp: 6, seq: 6 }]);
+    await waitFor(() => expect(container.querySelector('[data-design-preview-open="true"]')).toBeTruthy());
+    expect(screen.getByLabelText("Design preview workbench")).toBeTruthy();
+  });
+
   it("加载更早:前插历史且 cursor 前移,原条目仍在", async () => {
     const { ops } = stubShell({ hasMore: true });
     render(<ChatView meta={META} />);
