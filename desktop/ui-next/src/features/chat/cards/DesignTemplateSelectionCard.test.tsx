@@ -105,6 +105,23 @@ describe("DesignTemplateSelectionCard", () => {
     expect(sender).not.toHaveBeenCalled();
   });
 
+  it("renders a cancel fallback when cancel is the only allowed action", async () => {
+    const sender = vi.fn();
+    render(
+      <DesignTemplateSelectionCard
+        item={{ ...ITEM, allowedActions: { select: false, next: false, direct: false, cancel: true } }}
+        sessionId="s1"
+        sendFrame={sender}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "选择" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "换一批" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "不使用模板" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(sender).toHaveBeenCalledWith("design/selection/respond", { request_id: "d1", action: "cancel" }));
+    expect(screen.getByRole("status").textContent).toContain("已取消选择");
+  });
+
   it("renders open cards readonly without actions", () => {
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="child" readonly />);
     expect(screen.getByRole("status").textContent).toContain("未答复");

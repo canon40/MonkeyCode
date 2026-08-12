@@ -368,6 +368,7 @@ export const en: Record<MessageKey, string> = {
   "chat.design.reselect": "Choose again",
   "chat.design.next": "Show more",
   "chat.design.direct": "Continue without a template",
+  "chat.design.cancel": "Cancel",
   "chat.design.submitting": "Submitting…",
   "chat.design.submitFailed": "Submission failed. Try again.",
   "chat.design.previewLoading": "Loading live preview…",
