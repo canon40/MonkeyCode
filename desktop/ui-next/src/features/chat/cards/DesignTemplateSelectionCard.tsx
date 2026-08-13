@@ -143,7 +143,19 @@ function DesignTemplatePreview({
   );
 }
 
-function TerminalDesign({ item, response, unanswered }: { item: DesignTemplateSelectionItem; response?: DesignSelectionResponse; unanswered?: boolean }) {
+function TerminalDesign({
+  item,
+  response,
+  unanswered,
+  uploadUrl,
+  loadHtml,
+}: {
+  item: DesignTemplateSelectionItem;
+  response?: DesignSelectionResponse;
+  unanswered?: boolean;
+  uploadUrl?: (path: string) => Promise<string>;
+  loadHtml?: (path: string) => Promise<string>;
+}) {
   const { t } = useI18n();
   const action = response?.action ?? item.action;
   const selectedId = response?.selected_id ?? item.selectedId;
@@ -157,6 +169,34 @@ function TerminalDesign({ item, response, unanswered }: { item: DesignTemplateSe
         : t(`chat.design.action.${action ?? "cancel"}`);
   if (selected) label += ` · ${selected.title}`;
   if (item.reason) label += ` · ${item.reason}`;
+
+  if (action === "select" && selected) {
+    const preview = selected.image
+      ? { type: "image" as const, path: selected.image }
+      : selected.preview;
+    return (
+      <section className="card card-border w-full max-w-[760px] overflow-hidden bg-base-100" aria-label={item.title || t("chat.design.title")}>
+        <header className="flex items-center gap-1.5 border-b border-base-300 px-4 py-3.5">
+          <IconCheck size={14} stroke={1.75} aria-hidden />
+          <h3 role="status" className="text-sm font-semibold leading-5">{label}</h3>
+        </header>
+        <div className="p-4">
+          <div className="mx-auto max-w-lg overflow-hidden rounded-xl border border-base-300 bg-base-100">
+            {preview && (
+              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
+            )}
+            {selected.description && <p className="px-3 py-2.5 text-xs leading-relaxed text-base-content/60">{selected.description}</p>}
+            {selected.reason && (
+              <p className="border-t border-base-200 px-3 py-2.5 text-xs leading-relaxed text-base-content/70">
+                <strong>{t("chat.design.reason")}</strong>{selected.reason}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div role="status" className="flex items-center justify-center gap-1.5 text-xs text-base-content/50">
       <IconCheck size={12} stroke={1.75} aria-hidden />
@@ -188,8 +228,8 @@ export function DesignTemplateSelectionCard({
   const [failed, setFailed] = useState(false);
   const [sent, setSent] = useState<DesignSelectionResponse>();
 
-  if (item.state !== "open" || sent) return <TerminalDesign item={item} response={sent} />;
-  if (readonly) return <TerminalDesign item={item} unanswered />;
+  if (item.state !== "open" || sent) return <TerminalDesign item={item} response={sent} uploadUrl={uploadUrl} loadHtml={loadHtml} />;
+  if (readonly) return <TerminalDesign item={item} unanswered uploadUrl={uploadUrl} loadHtml={loadHtml} />;
 
   const send = sendFrame ?? localFrameSender(sessionId);
   // Duplicate request upserts keep the row/component mounted. A refreshed candidate set

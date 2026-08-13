@@ -77,6 +77,24 @@ describe("DesignTemplateSelectionCard", () => {
     expect(screen.queryByRole("button", { name: "按这个设计开发" })).toBeNull();
   });
 
+  it("keeps the selected design visible in history", async () => {
+    const uploadUrl = vi.fn(async (path: string) => `data:image/png;base64,${path}`);
+    render(
+      <DesignTemplateSelectionCard
+        item={{ ...ITEM, state: "responded", action: "select", selectedId: "clean" }}
+        sessionId="s1"
+        uploadUrl={uploadUrl}
+      />,
+    );
+
+    const card = screen.getByRole("region", { name: "Visual direction" });
+    expect(screen.getByRole("status").textContent).toContain("已选择 · Clean");
+    expect(card.textContent).toContain("Matches your brief");
+    expect(await screen.findByRole("img", { name: "Clean" })).toBeTruthy();
+    expect(uploadUrl).toHaveBeenCalledWith("clean.png");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("sends next with refinement text from the confirmation view", async () => {
     const sender = vi.fn();
     render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} />);
