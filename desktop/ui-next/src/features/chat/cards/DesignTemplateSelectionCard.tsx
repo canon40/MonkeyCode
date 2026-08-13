@@ -12,7 +12,17 @@ import type {
 
 type PreviewState = { status: "idle" | "loading" | "error" } | { status: "ready"; url: string };
 
-function DesignTemplateImage({ title, path, uploadUrl }: { title: string; path: string; uploadUrl?: (path: string) => Promise<string> }) {
+function DesignTemplateImage({
+  title,
+  path,
+  uploadUrl,
+  fit = "cover",
+}: {
+  title: string;
+  path: string;
+  uploadUrl?: (path: string) => Promise<string>;
+  fit?: "cover" | "contain";
+}) {
   const { t } = useI18n();
   const [state, setState] = useState<PreviewState>({ status: "idle" });
 
@@ -34,7 +44,7 @@ function DesignTemplateImage({ title, path, uploadUrl }: { title: string; path: 
   if (state.status !== "ready") {
     return <span className="flex size-full items-center justify-center text-xs text-base-content/50">{t("chat.design.previewLoading")}</span>;
   }
-  return <img src={state.url} alt={title} className="size-full object-cover" onError={() => setState({ status: "error" })} />;
+  return <img src={state.url} alt={title} className={fit === "contain" ? "block h-auto w-full object-contain" : "size-full object-cover"} onError={() => setState({ status: "error" })} />;
 }
 
 export function createDesignTemplateBlobUrl(html: string): string {
@@ -58,12 +68,14 @@ function DesignTemplatePreview({
   fallbackPath,
   uploadUrl,
   loadHtml,
+  expanded = false,
 }: {
   title: string;
   preview: Preview;
   fallbackPath?: string;
   uploadUrl?: (path: string) => Promise<string>;
   loadHtml?: (path: string) => Promise<string>;
+  expanded?: boolean;
 }) {
   const { t } = useI18n();
   const host = useRef<HTMLDivElement>(null);
@@ -116,9 +128,9 @@ function DesignTemplatePreview({
 
   const view = resolveDesignTemplatePreviewState(state.status, Boolean(fallbackPath && uploadUrl));
   return (
-    <div ref={host} data-preview-state={preview.type === "html" ? state.status : undefined} className="pointer-events-none aspect-video w-full overflow-hidden bg-base-200">
+    <div ref={host} data-preview-state={preview.type === "html" ? state.status : undefined} className={`pointer-events-none w-full overflow-hidden bg-base-200 ${expanded && preview.type === "image" ? "" : "aspect-video"}`}>
       {mounted && preview.type === "image" && (
-        <DesignTemplateImage key={preview.path} title={title} path={preview.path} uploadUrl={uploadUrl} />
+        <DesignTemplateImage key={preview.path} title={title} path={preview.path} uploadUrl={uploadUrl} fit={expanded ? "contain" : "cover"} />
       )}
       {mounted && preview.type === "html" && view.showHtml && state.status === "ready" && (
         <iframe
@@ -183,7 +195,7 @@ function TerminalDesign({
         <div className="p-4">
           <div className="mx-auto max-w-lg overflow-hidden rounded-xl border border-base-300 bg-base-100">
             {preview && (
-              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
+              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} expanded />
             )}
             {selected.description && <p className="px-3 py-2.5 text-xs leading-relaxed text-base-content/60">{selected.description}</p>}
             {selected.reason && (
@@ -270,7 +282,7 @@ export function DesignTemplateSelectionCard({
         <div className="p-4">
           <div className="mx-auto max-w-lg overflow-hidden rounded-xl border border-primary bg-primary/5">
             {preview && (
-              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} />
+              <DesignTemplatePreview title={selected.title} preview={preview} fallbackPath={preview.type === "html" ? selected.image : undefined} uploadUrl={uploadUrl} loadHtml={loadHtml} expanded />
             )}
             {selected.description && <p className="px-3 py-2.5 text-xs leading-relaxed text-base-content/60">{selected.description}</p>}
           </div>

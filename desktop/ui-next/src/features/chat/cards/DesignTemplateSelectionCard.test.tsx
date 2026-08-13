@@ -54,7 +54,7 @@ describe("DesignTemplateSelectionCard", () => {
     const sender = vi.fn(async () => {
       if (rejectFirst) throw new Error("offline");
     });
-    render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} />);
+    render(<DesignTemplateSelectionCard item={ITEM} sessionId="s1" sendFrame={sender} uploadUrl={async (path) => `data:image/png;base64,${path}`} />);
     await userEvent.click(screen.getByRole("button", { name: /Clean/ }));
     await userEvent.click(screen.getByRole("button", { name: "选择" }));
 
@@ -64,6 +64,9 @@ describe("DesignTemplateSelectionCard", () => {
     expect(screen.getByRole("button", { name: "换一批" })).toBeTruthy();
     expect(screen.getByRole("textbox", { name: "补充你的设计条件（可选）" })).toBeTruthy();
     expect(screen.getByText("已选择：Clean")).toBeTruthy();
+    const selectedImage = await screen.findByRole("img", { name: "Clean" });
+    expect(selectedImage.className).toContain("object-contain");
+    expect(selectedImage.closest(".aspect-video")).toBeNull();
 
     const confirm = screen.getByRole("button", { name: "按这个设计开发" });
     await userEvent.click(confirm);
@@ -90,7 +93,10 @@ describe("DesignTemplateSelectionCard", () => {
     const card = screen.getByRole("region", { name: "Visual direction" });
     expect(screen.getByRole("status").textContent).toContain("已选择 · Clean");
     expect(card.textContent).toContain("Matches your brief");
-    expect(await screen.findByRole("img", { name: "Clean" })).toBeTruthy();
+    const image = await screen.findByRole("img", { name: "Clean" });
+    expect(image.className).toContain("h-auto");
+    expect(image.className).toContain("object-contain");
+    expect(image.closest(".aspect-video")).toBeNull();
     expect(uploadUrl).toHaveBeenCalledWith("clean.png");
     expect(screen.queryByRole("button")).toBeNull();
   });
