@@ -314,6 +314,14 @@ func (p *Proxy) modifyResponse(resp *http.Response) error {
 	if !ok || ctx == nil || ctx.model == nil {
 		return nil
 	}
+	contentType := resp.Header.Get("Content-Type")
+	if ctx.stream && !strings.Contains(strings.ToLower(contentType), "charset=") {
+		if contentType == "" {
+			resp.Header.Set("Content-Type", "text/event-stream; charset=utf-8")
+		} else if strings.Contains(strings.ToLower(contentType), "text/event-stream") {
+			resp.Header.Set("Content-Type", contentType+"; charset=utf-8")
+		}
+	}
 	resp.Body = NewUsageCapture(p.logger, resp.Body, &UsageCaptureContext{
 		ctx:      resp.Request.Context(),
 		path:     normalizeUsageCapturePath(resp.Request.URL.Path),

@@ -26,6 +26,7 @@ import (
 	"github.com/chaitin/MonkeyCode/backend/pkg/entx"
 	"github.com/chaitin/MonkeyCode/backend/pkg/lifecycle"
 	"github.com/chaitin/MonkeyCode/backend/pkg/taskflow"
+	"github.com/chaitin/MonkeyCode/backend/pkg/vmcondition"
 	"github.com/chaitin/MonkeyCode/backend/pkg/telemetry"
 	"github.com/chaitin/MonkeyCode/backend/pkg/ws"
 )
@@ -498,10 +499,12 @@ func (h *InternalHostHandler) VmConditions(c *web.Context, req taskflow.VirtualM
 		}
 	}
 
-	conds := cvt.From(&req, &etypes.VirtualMachineCondition{})
-	h.logger.With("req", req, "conds", conds).DebugContext(c.Request().Context(), "recv vm conditions req")
+	mappedReq := req
+	mappedReq.Conditions = vmcondition.MapConditions(req.Conditions)
+	mappedConds := cvt.From(&mappedReq, &etypes.VirtualMachineCondition{})
+	h.logger.With("req", req, "conds", mappedConds).DebugContext(c.Request().Context(), "recv vm conditions req")
 	if err := h.repo.UpdateVirtualMachine(c.Request().Context(), vm.ID, func(vmuo *db.VirtualMachineUpdateOne) error {
-		vmuo.SetConditions(conds)
+		vmuo.SetConditions(mappedConds)
 		return nil
 	}); err != nil {
 		h.logger.With("vm_id", vm.ID, "environment_id", vm.EnvironmentID, "error", err).ErrorContext(c.Request().Context(), "update vm conditions failed")
