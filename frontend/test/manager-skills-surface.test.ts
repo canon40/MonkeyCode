@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import cn from "../src/i18n/resources/cn.ts";
+
 const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
 const navSource = readFileSync(
   new URL("../src/components/manager/nav-teams.tsx", import.meta.url),
@@ -20,9 +22,9 @@ test("管理后台挂载 Skills 页面路由和侧边栏入口", () => {
   assert.match(appSource, /TeamManagerSkills/);
   assert.match(appSource, /path="skills"/);
   assert.match(navSource, /to="\/manager\/skills"/);
-  assert.match(navSource, />Skills</);
+  assert.match(navSource, /t\("managerShell\.nav\.skills"\)/);
   assert.match(pageSource, /"\/manager\/skills"/);
-  assert.match(pageSource, /label: "Skills"/);
+  assert.match(pageSource, /t\("managerShell\.nav\.skills"\)/);
 });
 
 test("添加 Skill 对话框默认选中输入文本并放在上传文件左侧", () => {
@@ -30,12 +32,14 @@ test("添加 Skill 对话框默认选中输入文本并放在上传文件左侧"
   assert.ok(tabsMatch, "Add Skill tabs should default to the text input tab");
 
   const tabsSource = tabsMatch[0];
-  const inputTextIndex = tabsSource.indexOf("输入文本");
-  const uploadFileIndex = tabsSource.indexOf("上传文件");
+  const pasteTabIndex = tabsSource.indexOf('t("managerSkills.tabs.paste")');
+  const uploadTabIndex = tabsSource.indexOf('t("managerSkills.tabs.upload")');
 
-  assert.ok(inputTextIndex >= 0, "Add Skill tabs should show 输入文本");
-  assert.ok(uploadFileIndex >= 0, "Add Skill tabs should show 上传文件");
-  assert.ok(inputTextIndex < uploadFileIndex, "输入文本 should appear before 上传文件");
+  assert.ok(pasteTabIndex >= 0, "Add Skill tabs should use paste tab i18n key");
+  assert.ok(uploadTabIndex >= 0, "Add Skill tabs should use upload tab i18n key");
+  assert.ok(pasteTabIndex < uploadTabIndex, "paste tab should appear before upload tab");
+  assert.equal(cn.managerSkills.tabs.paste, "输入文本");
+  assert.equal(cn.managerSkills.tabs.upload, "上传文件");
   assert.doesNotMatch(tabsSource, /粘贴文本/);
 });
 

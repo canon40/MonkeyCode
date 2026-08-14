@@ -15,6 +15,7 @@
     "check:online-preview": "node scripts/check-online-preview.mjs",
     "lint": "eslint .",
     "test:online-preview": "node --test test/online-preview-health.test.mjs test/vite-online-proxy.test.mjs",
+    "test:unit": "node --experimental-strip-types --import ./test/register-ts-alias.mjs --test test/*.test.ts test/*.test.mjs",
     "preview": "vite preview",
     "api": "sta --path ${SWAGGER} --output src/api"
   },

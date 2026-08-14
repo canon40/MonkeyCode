@@ -130,6 +130,11 @@ const en = {
       ready: "Development environment is ready",
       failed: "Unable to create development environment",
     },
+    vmCondition: {
+      networkExchangeFull: "The host has run out of network resources (routing/neighbor table is full), so a new development environment cannot be created right now. Please retry later or ask an administrator to clean up the host network configuration.",
+      networkDeviceMissing: "Failed to initialize the development environment network device. Please retry later or ask an administrator to inspect the host network state.",
+      startupFailed: "The development environment failed to start. Please retry later. If the problem persists, contact an administrator with the error details.",
+    },
     file: {
       emptyList: "File list cannot be empty",
     },

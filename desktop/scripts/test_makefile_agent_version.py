@@ -8,6 +8,7 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORKSPACE_ROOT = ROOT.parent
+AGENT_VERSION_SYM = "github.com/chaitin/ohmyagent/internal/buildinfo.Version"
 
 
 class MakefileAgentVersionTest(unittest.TestCase):
@@ -52,13 +53,14 @@ class MakefileAgentVersionTest(unittest.TestCase):
                 text=True,
             ).stdout
 
-            linker_value = f"-X main.Version={commit}"
-            self.assertEqual(dry_run.count(linker_value), 2)
+            linker_value = f"-X {AGENT_VERSION_SYM}={commit}"
+            self.assertGreaterEqual(dry_run.count(linker_value), 1)
+            self.assertNotIn("-X main.Version=", dry_run)
 
     def test_windows_release_workflow_embeds_agent_commit_hash(self) -> None:
         workflow = (WORKSPACE_ROOT / ".github" / "workflows" / "desktop-windows.yml").read_text(encoding="utf-8")
         self.assertIn('AGENT_VERSION="$(git rev-parse --short HEAD)"', workflow)
-        self.assertIn("-X main.Version=${AGENT_VERSION}", workflow)
+        self.assertIn(f"-X {AGENT_VERSION_SYM}=${{AGENT_VERSION}}", workflow)
 
 
 if __name__ == "__main__":

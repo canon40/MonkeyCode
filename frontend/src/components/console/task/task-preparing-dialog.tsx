@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia } from "@/components/ui/empty"
 import { IconCheck, IconLoader, IconX } from "@tabler/icons-react"
 import { ConstsTaskStatus, GitInChaitinNetAiMonkeycodeMonkeycodeAiEntTypesConditionType, type DomainProjectTask } from "@/api/Api"
-import { getConditionTypeText, getLastCondition } from "@/utils/common"
+import { getConditionTypeText, getLastCondition, getVmMessage } from "@/utils/common"
 import { useTranslation } from "react-i18next"
 
 interface TaskPreparingProps {
@@ -31,7 +31,7 @@ export function TaskPreparingView({ task }: TaskPreparingProps) {
   if (!show) return null
 
   const statusText = getConditionTypeText(task?.virtualmachine?.conditions)
-  const detailMessage = task?.virtualmachine?.conditions?.[task?.virtualmachine?.conditions?.length - 1]?.message || t("taskDetail.preparing.detail")
+  const detailMessage = getVmMessage(task?.virtualmachine) || t("taskDetail.preparing.detail")
 
   return (
     <Empty className="flex-1 bg-muted/60">
