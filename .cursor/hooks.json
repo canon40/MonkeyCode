@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/format-after-edit.sh",
+        "timeout": 120
+      }
+    ],
+    "afterTabFileEdit": [
+      {
+        "command": ".cursor/hooks/format-after-edit.sh",
+        "timeout": 120
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/track-edits.sh",
+        "matcher": "Write|Edit|StrReplace",
+        "timeout": 10
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/auto-test-followup.sh",
+        "timeout": 15,
+        "loop_limit": 2
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": ".cursor/hooks/subagent-context.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}

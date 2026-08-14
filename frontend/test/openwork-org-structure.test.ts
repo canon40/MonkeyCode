@@ -39,3 +39,22 @@ test("openwork mcp config points at agent endpoint", () => {
     "https://api.openworklabs.com/mcp/agent",
   );
 });
+
+test("fast coding hooks and rules are wired", () => {
+  const hooks = JSON.parse(
+    readFileSync(new URL("../../.cursor/hooks.json", import.meta.url), "utf8"),
+  ) as { hooks: Record<string, unknown[]> };
+  assert.ok(Array.isArray(hooks.hooks.afterFileEdit));
+  assert.ok(Array.isArray(hooks.hooks.postToolUse));
+  assert.ok(Array.isArray(hooks.hooks.stop));
+
+  const fastCoding = readFileSync(
+    new URL("../../.cursor/rules/fast-coding-intervention.mdc", import.meta.url),
+    "utf8",
+  );
+  assert.match(fastCoding, /alwaysApply: true/);
+  assert.match(fastCoding, /1~3파일/);
+
+  assert.match(orgSource, /coding_policy:/);
+  assert.match(orgSource, /mode: fast/);
+});
