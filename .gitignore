@@ -28,3 +28,7 @@ dist
 # ai
 .superpowers/
 desktop/uidist/
+
+# local caches / notes tooling
+.cache/
+
