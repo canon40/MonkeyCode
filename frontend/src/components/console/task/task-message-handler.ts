@@ -1,4 +1,5 @@
 import { b64decode, deepMerge } from "@/utils/common"
+import { decodeTaskStreamPayload, extractAcpTextContent } from "./task-stream-decode"
 import type { MessageType } from "./message"
 import type {
   AvailableCommands,
@@ -162,8 +163,38 @@ export class TaskMessageHandler {
   }
 
   private decodeChunkPayloadJSON(data: unknown) {
-    if (typeof data !== "string") return null
-    return JSON.parse(b64decode(data))
+    return decodeTaskStreamPayload(data)
+  }
+
+  private appendAgentStreamChunk(
+    chunkType: "agent_message_chunk" | "agent_thought_chunk",
+    text: string,
+    timestamp: number,
+    allowEmptyStart = false,
+  ) {
+    if (!text && !allowEmptyStart) {
+      return
+    }
+
+    const lastMsg = this.state.messages[this.state.messages.length - 1]
+
+    if (lastMsg?.type === chunkType) {
+      lastMsg.data.content = (lastMsg.data.content || "") + text
+      return
+    }
+
+    if (!allowEmptyStart && text.trim().length === 0) {
+      return
+    }
+
+    const newMessage: MessageType = {
+      id: this.createMessageId(),
+      time: timestamp,
+      role: "agent",
+      type: chunkType,
+      data: { content: text },
+    }
+    this.state.messages.push(newMessage)
   }
 
   private applyUserInput(data: TaskUserInputPayload, timestamp: number) {
@@ -381,46 +412,13 @@ export class TaskMessageHandler {
   }
 
   private applyAgentMessageChunk(data: any, timestamp: number) {
-    if (data.content.type !== "text") {
-      return
-    }
-
-    const lastMsg = this.state.messages[this.state.messages.length - 1]
-
-    if (lastMsg?.type === "agent_message_chunk") {
-      lastMsg.data.content = (lastMsg.data.content || "") + (data.content.text || "")
-    } else if (data.content.text?.trim().length > 0) {
-      const newMessage: MessageType = {
-        id: this.createMessageId(),
-        time: timestamp,
-        role: "agent",
-        type: "agent_message_chunk",
-        data: { content: data.content.text || "" },
-      }
-      this.state.messages.push(newMessage)
-    }
+    const text = extractAcpTextContent(data?.content)
+    this.appendAgentStreamChunk("agent_message_chunk", text, timestamp)
   }
 
   private applyAgentThoughtChunk(data: any, timestamp: number) {
-    if (data.content.type !== "text") {
-      return
-    }
-
-    const lastMsg = this.state.messages[this.state.messages.length - 1]
-    const text = data.content.text || ""
-
-    if (lastMsg?.type === "agent_thought_chunk") {
-      lastMsg.data.content = (lastMsg.data.content || "") + text
-    } else {
-      const newMessage: MessageType = {
-        id: this.createMessageId(),
-        time: timestamp,
-        role: "agent",
-        type: "agent_thought_chunk",
-        data: { content: text },
-      }
-      this.state.messages.push(newMessage)
-    }
+    const text = extractAcpTextContent(data?.content)
+    this.appendAgentStreamChunk("agent_thought_chunk", text, timestamp, true)
   }
 
   private applyToolCall(data: any, timestamp: number) {
@@ -610,23 +608,30 @@ export class TaskMessageHandler {
         break
       case "task-running":
         if (chunk.kind === "acp_event") {
-          this.applyACPEvent(this.decodeChunkPayloadJSON(chunk.data), timestamp)
+          const payload = this.decodeChunkPayloadJSON(chunk.data)
+          if (payload) this.applyACPEvent(payload, timestamp)
         } else if (chunk.kind === "acp_ask_user_question") {
-          this.applyAskUserQuestion(this.decodeChunkPayloadJSON(chunk.data), timestamp)
+          const payload = this.decodeChunkPayloadJSON(chunk.data)
+          if (payload) this.applyAskUserQuestion(payload, timestamp)
         }
         break
       case "task-ended":
         this.applyTaskEnded()
         break
-      case "task-error":
-        this.applyErrorMessage(this.decodeChunkPayloadJSON(chunk.data), timestamp)
+      case "task-error": {
+        const payload = this.decodeChunkPayloadJSON(chunk.data)
+        if (payload) this.applyErrorMessage(payload, timestamp)
         break
-      case "reply-question":
-        this.applyReplyQuestion(this.decodeChunkPayloadJSON(chunk.data))
+      }
+      case "reply-question": {
+        const payload = this.decodeChunkPayloadJSON(chunk.data)
+        if (payload) this.applyReplyQuestion(payload)
         break
+      }
       case "cursor":
         if (this.captureCursor) {
-          this.applyCursor(this.decodeChunkPayloadJSON(chunk.data))
+          const payload = this.decodeChunkPayloadJSON(chunk.data)
+          if (payload) this.applyCursor(payload)
         }
         break
       default:
