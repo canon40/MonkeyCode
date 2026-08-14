@@ -48,19 +48,20 @@ python -m trafficcheck --selftest https://example.com
 ```bat
 build.bat
 ```
-- 내부적으로 **cx_Freeze**로 빌드합니다. cx_Freeze는 표준 Python DLL 로더를 쓰기 때문에
-  다양한 Windows 버전에서 가장 안정적으로 실행됩니다.
-- 결과물:
-  - `TrafficCheck-windows\` 폴더 (안에 `TrafficCheck.exe`)
-  - `TrafficCheck-windows.zip` (다른 PC로 복사/공유용)
-- **Python 설치가 필요 없습니다.** MS Visual C++ 런타임(`vcruntime140*.dll`)이 함께 포함되어
-  깨끗한 Windows에서도 바로 실행됩니다.
-- 사용법: zip을 풀고 **`TrafficCheck.exe` 더블클릭**. 폴더째 USB/다른 PC로 옮겨도 됩니다
-  (설정은 exe 옆 `trafficcheck_settings.json`에 저장되어 유지).
+빌드하면 두 가지 배포물이 나옵니다. **둘 다 파이썬 등 다른 설치가 전혀 필요 없습니다**
+(Python 런타임 + Tk + MS Visual C++ 런타임이 모두 포함).
 
-> 단일 파일(.exe 하나)이 꼭 필요하면 PyInstaller로도 만들 수 있습니다:
+1. **`TrafficCheck-Setup.exe`** — 단일 **설치 파일**. 이거 하나만 실행하면 설치되고,
+   시작 메뉴/바탕화면 바로가기가 생기며 바로 실행됩니다. **다른 설치가 필요 없습니다.**
+   (Inno Setup이 설치된 PC에서 빌드할 때 생성됩니다: https://jrsoftware.org/isdl.php)
+2. **`TrafficCheck-windows.zip`** — 설치가 싫을 때 쓰는 **포터블** 버전. 압축을 풀고
+   `TrafficCheck.exe`를 더블클릭. USB/다른 PC로 폴더째 옮겨도 동작.
+
+내부적으로 **cx_Freeze**로 빌드합니다(표준 Python DLL 로더 사용 → 여러 Windows 버전에서 안정적).
+설정은 실행 파일 위치 기준으로 `trafficcheck_settings.json`에 저장되어 유지됩니다.
+
+> 굳이 "설치 없이 단일 exe 파일 하나"만 원하면 PyInstaller로도 가능합니다:
 > `pip install pyinstaller && pyinstaller --onefile --windowed --name TrafficCheck run_gui.py`
-> → `dist\TrafficCheck.exe`. (일부 환경에선 cx_Freeze 폴더 빌드가 더 안정적입니다.)
 
 ### macOS / Linux
 ```bash

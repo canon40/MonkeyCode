@@ -5,6 +5,7 @@ build-*/
 dist/
 dist-*/
 TrafficCheck-windows/
+TrafficCheck-Setup.exe
 *.zip
 *.spec
 trafficcheck_settings.json
