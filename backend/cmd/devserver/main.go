@@ -65,6 +65,21 @@ func (devMemberManager) AutoCreateOIDCMember(context.Context, uuid.UUID, *domain
 
 var _ domain.MemberManager = devMemberManager{}
 
+// devServerConfigProvider reports a private-edition server config so the web
+// console can read runtime settings (notably captcha_enabled) from
+// /api/v1/server/config. Without a provider that route is not registered and
+// the frontend defaults captcha to enabled.
+type devServerConfigProvider struct{ cfg *config.Config }
+
+func (p devServerConfigProvider) GetServerConfig(context.Context) (domain.ServerConfig, error) {
+	return domain.ServerConfig{
+		Edition:        domain.ProductEditionPrivate,
+		CaptchaEnabled: p.cfg.Security.CaptchaEnabled,
+	}, nil
+}
+
+var _ domain.ServerConfigProvider = devServerConfigProvider{}
+
 func main() {
 	cfg, err := config.Init("./config/server")
 	if err != nil {
@@ -109,6 +124,9 @@ func main() {
 	// module (which requires *domain.PublicHostUsecase) can wire up.
 	do.Provide(injector, hostrepo.NewPublicHostRepo)
 	do.Provide(injector, hostusecase.NewPublicHostUsecase)
+
+	// Expose /api/v1/server/config so the web console can read runtime settings.
+	do.ProvideValue[domain.ServerConfigProvider](injector, devServerConfigProvider{cfg: cfg})
 
 	biz.RegisterAll(injector)
 	biz.RegisterOpenSource(injector)
