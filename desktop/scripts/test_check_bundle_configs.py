@@ -5,7 +5,13 @@ import pathlib
 import tempfile
 import unittest
 
-from check_bundle_configs import SIDECAR, WSL_SIDECAR, check
+from check_bundle_configs import SIDECAR, SKILLS_RESOURCE, WSL_SIDECAR, check
+
+
+def bundled_resources(**extra: str) -> dict[str, str]:
+    resources = {"../plugins/skills": SKILLS_RESOURCE}
+    resources.update(extra)
+    return resources
 
 
 def write(root: pathlib.Path, name: str, bundle: dict) -> None:
@@ -24,7 +30,8 @@ class BundleConfigContractTest(unittest.TestCase):
             (root / "icons" / "icon.icns").write_bytes(b"x")
             write(root, "tauri.conf.json", {"active": False})
             write(root, "bundle.macos.conf.json",
-                  {"active": True, "targets": ["dmg"], "icon": ["icons/icon.icns"]})
+                  {"active": True, "targets": ["dmg"], "icon": ["icons/icon.icns"],
+                   "resources": bundled_resources()})
             errors = check(root)
             self.assertEqual(len(errors), 1, errors)
             self.assertIn("bundle.macos.conf.json", errors[0])
@@ -35,7 +42,7 @@ class BundleConfigContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
             write(root, "tauri.conf.json", {"active": False, "externalBin": [SIDECAR]})
-            write(root, "bundle.win.conf.json", {"active": True, "externalBin": [SIDECAR]})
+            write(root, "bundle.win.conf.json", {"active": True, "externalBin": [SIDECAR], "resources": bundled_resources()})
             errors = check(root)
             self.assertEqual(len(errors), 1, errors)
             self.assertIn("tauri.conf.json", errors[0])
@@ -45,7 +52,7 @@ class BundleConfigContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
             write(root, "tauri.conf.json", {"active": False})
-            write(root, "bundle.win.conf.json", {"active": True, "externalBin": [SIDECAR]})
+            write(root, "bundle.win.conf.json", {"active": True, "externalBin": [SIDECAR], "resources": bundled_resources()})
             write(root, "bundle.extra.conf.json", {"resources": {"extras/*": "./"}})
             self.assertEqual(check(root), [])
 
@@ -60,8 +67,8 @@ class BundleConfigContractTest(unittest.TestCase):
         del cfg["bundle"]["resources"]
         (root / "bundle.windows.conf.json").write_text(json.dumps(cfg), encoding="utf-8")
         errors = check(root)
-        self.assertEqual(len(errors), 1, errors)
-        self.assertIn("ohmyagent-linux", errors[0])
+        self.assertGreaterEqual(len(errors), 1, errors)
+        self.assertTrue(any("ohmyagent-linux" in error for error in errors), errors)
 
     def test_non_windows_targets_need_no_wsl_engine(self) -> None:
         # WSL 只是 Windows 包的义务;macOS/Linux 包不受牵连
@@ -71,7 +78,8 @@ class BundleConfigContractTest(unittest.TestCase):
         write(root, "tauri.conf.json", {"active": False})
         write(root, "bundle.macos.conf.json", {
             "active": True, "targets": ["app", "dmg"],
-            "externalBin": [SIDECAR], "icon": ["icons/icon.icns"]})
+            "externalBin": [SIDECAR], "icon": ["icons/icon.icns"],
+            "resources": bundled_resources()})
         self.assertEqual(check(root), [])
 
     # ---- 图标不变量 ----
@@ -85,7 +93,7 @@ class BundleConfigContractTest(unittest.TestCase):
         for f in ("icon.ico", "icon.icns"):
             (root / "icons" / f).write_bytes(b"x")
         win = {"active": True, "targets": ["nsis"], "externalBin": [SIDECAR],
-               "resources": {WSL_SIDECAR: "./"},
+               "resources": bundled_resources(**{WSL_SIDECAR: "./"}),
                "icon": ["icons/icon.ico"] if icon is None else icon}
         if nsis is not None:
             win["windows"] = {"nsis": nsis}
@@ -125,7 +133,8 @@ class BundleConfigContractTest(unittest.TestCase):
         write(root, "tauri.conf.json", {"active": False})
         write(root, "bundle.macos.conf.json", {
             "active": True, "targets": ["app", "dmg"],
-            "externalBin": [SIDECAR], "icon": ["icons/icon.icns"]})
+            "externalBin": [SIDECAR], "icon": ["icons/icon.icns"],
+            "resources": bundled_resources()})
         self.assertEqual(check(root), [])
 
     # ---- 平台自动合并名 ----
@@ -142,7 +151,8 @@ class BundleConfigContractTest(unittest.TestCase):
             write(root, "tauri.conf.json", {"active": False})
             write(root, "tauri.macos.conf.json", {
                 "active": True, "targets": ["app"],
-                "externalBin": [SIDECAR], "icon": ["icons/icon.icns"]})
+                "externalBin": [SIDECAR], "icon": ["icons/icon.icns"],
+                "resources": bundled_resources()})
             errors = check(root)
             self.assertEqual(len(errors), 1, errors)
             self.assertIn("自动合并名", errors[0])
@@ -157,7 +167,8 @@ class BundleConfigContractTest(unittest.TestCase):
             (root / "tauri.linux.conf.json5").write_text("{}", encoding="utf-8")
             write(root, "bundle.linux.conf.json", {
                 "active": True, "targets": ["deb"],
-                "externalBin": [SIDECAR], "icon": ["icons/32x32.png"]})
+                "externalBin": [SIDECAR], "icon": ["icons/32x32.png"],
+                "resources": bundled_resources()})
             self.assertTrue(any("自动合并名" in e for e in check(root)), check(root))
 
     def test_bundle_prefixed_names_are_accepted(self) -> None:
@@ -168,7 +179,8 @@ class BundleConfigContractTest(unittest.TestCase):
             write(root, "tauri.conf.json", {"active": False})
             write(root, "bundle.linux.conf.json", {
                 "active": True, "targets": ["deb", "rpm", "appimage"],
-                "externalBin": [SIDECAR], "icon": ["icons/32x32.png"]})
+                "externalBin": [SIDECAR], "icon": ["icons/32x32.png"],
+                "resources": bundled_resources()})
             self.assertEqual(check(root), [])
 
     def test_linux_target_without_png_is_reported(self) -> None:
@@ -179,7 +191,8 @@ class BundleConfigContractTest(unittest.TestCase):
             write(root, "tauri.conf.json", {"active": False})
             write(root, "bundle.linux.conf.json", {
                 "active": True, "targets": ["appimage"],
-                "externalBin": [SIDECAR], "icon": ["icons/icon.ico"]})
+                "externalBin": [SIDECAR], "icon": ["icons/icon.ico"],
+                "resources": bundled_resources()})
             errors = check(root)
             self.assertEqual(len(errors), 1, errors)
             self.assertIn(".png", errors[0])

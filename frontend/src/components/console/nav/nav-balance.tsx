@@ -566,7 +566,8 @@ export default function NavBalance({
           {accountContent}
         </main>
       </DialogContent>
-      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+    </Dialog>
+    <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("navBalance.logout.title")}</AlertDialogTitle>
@@ -723,7 +724,6 @@ export default function NavBalance({
           </div>
         </DialogContent>
       </Dialog>
-    </Dialog>
     </>
   )
 }
