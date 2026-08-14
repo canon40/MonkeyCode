@@ -40,33 +40,39 @@ python run_gui.py
 python -m trafficcheck --selftest https://example.com
 ```
 
-## 실행 파일(EXE 등) 만들기
+## 실행 파일(EXE) 만들기
 
-> PyInstaller는 **크로스 컴파일이 안 됩니다.** 배포하려는 OS에서 각각 빌드하세요.
-> (Windows에서 빌드 → `TrafficCheck.exe`, macOS에서 빌드 → macOS 실행파일, Linux에서 빌드 → Linux 바이너리)
+> 빌드 도구는 **크로스 컴파일이 안 됩니다.** 배포하려는 OS에서 각각 빌드하세요.
 
-### Windows
+### Windows (권장 · 어느 Windows PC에서든 실행)
 ```bat
 build.bat
 ```
-→ `dist\TrafficCheck.exe` 생성. 이 **exe 하나만 다른 Windows PC로 복사**하면 파이썬 설치 없이 실행됩니다.
+- 내부적으로 **cx_Freeze**로 빌드합니다. cx_Freeze는 표준 Python DLL 로더를 쓰기 때문에
+  다양한 Windows 버전에서 가장 안정적으로 실행됩니다.
+- 결과물:
+  - `TrafficCheck-windows\` 폴더 (안에 `TrafficCheck.exe`)
+  - `TrafficCheck-windows.zip` (다른 PC로 복사/공유용)
+- **Python 설치가 필요 없습니다.** MS Visual C++ 런타임(`vcruntime140*.dll`)이 함께 포함되어
+  깨끗한 Windows에서도 바로 실행됩니다.
+- 사용법: zip을 풀고 **`TrafficCheck.exe` 더블클릭**. 폴더째 USB/다른 PC로 옮겨도 됩니다
+  (설정은 exe 옆 `trafficcheck_settings.json`에 저장되어 유지).
+
+> 단일 파일(.exe 하나)이 꼭 필요하면 PyInstaller로도 만들 수 있습니다:
+> `pip install pyinstaller && pyinstaller --onefile --windowed --name TrafficCheck run_gui.py`
+> → `dist\TrafficCheck.exe`. (일부 환경에선 cx_Freeze 폴더 빌드가 더 안정적입니다.)
 
 ### macOS / Linux
 ```bash
 ./build.sh
 ```
-→ `dist/TrafficCheck` 생성.
-
-빌드는 내부적으로 다음을 실행합니다:
-```bash
-pip install -r requirements.txt
-pyinstaller --onefile --windowed --name TrafficCheck run_gui.py
-```
+→ `dist/TrafficCheck` 단일 실행파일 생성(PyInstaller).
 
 ## 다른 PC에서 사용하기
 
-- **Windows exe**: `dist\TrafficCheck.exe` 파일만 복사하면 됩니다(설치 불필요, 포터블).
-- 설정 파일은 exe와 같은 폴더에 자동 생성되므로, 폴더째 USB/다른 PC로 옮겨도 입력값이 유지됩니다.
+- **가장 쉬운 방법**: 배포된 `TrafficCheck-windows.zip`을 받아 압축을 풀고 `TrafficCheck.exe` 실행.
+- Python·별도 설치 불필요, 인터넷 연결 불필요(대상 URL 접속 제외).
+- 폴더 전체를 USB나 다른 PC로 복사하면 그대로 동작하며, 입력한 URL 등 설정도 함께 이동합니다.
 
 ## 테스트
 
@@ -81,9 +87,10 @@ python -m unittest discover -s tests -p "test_*.py" -v
 ```
 traffic-tool/
 ├─ run_gui.py            # 실행/빌드 진입점
-├─ build.bat            # Windows 빌드
-├─ build.sh             # macOS/Linux 빌드
-├─ requirements.txt     # pyinstaller (빌드 전용)
+├─ setup_cxfreeze.py    # Windows(cx_Freeze) 빌드 설정
+├─ build.bat            # Windows 빌드 (cx_Freeze → 폴더 + zip)
+├─ build.sh             # macOS/Linux 빌드 (PyInstaller → 단일 파일)
+├─ requirements.txt     # cx_Freeze / pyinstaller (빌드 전용)
 ├─ trafficcheck/
 │  ├─ engine.py         # stdlib 요청 엔진(헬스체크/부하테스트)
 │  ├─ gui.py            # Tkinter GUI (2탭)
