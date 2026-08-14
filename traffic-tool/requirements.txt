@@ -1,0 +1,7 @@
+# Build-time only. The app runtime uses just the Python standard library
+# (urllib, tkinter, threading), so the packaged program needs no pip installs.
+#
+# Windows (recommended, most reliable across PCs): cx_Freeze  -> folder build
+# Single-file alternative (Win/mac/Linux):        pyinstaller -> one .exe/binary
+cx_Freeze>=6.15
+pyinstaller>=6.0
