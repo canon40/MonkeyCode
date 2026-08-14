@@ -587,6 +587,10 @@ func (s *hostTaskRepoStub) CompleteModelSwitch(context.Context, uuid.UUID, uuid.
 	panic("unexpected call to CompleteModelSwitch")
 }
 
+func (s *hostTaskRepoStub) UpdateAgentResourceSelection(_ context.Context, _ uuid.UUID, _ []string, _ []string) error {
+	panic("unexpected call to UpdateAgentResourceSelection")
+}
+
 type preinsertTaskflowStub struct {
 	vm taskflow.VirtualMachiner
 }

@@ -161,3 +161,7 @@ func (s *taskHookRepoStub) FinishModelSwitch(context.Context, uuid.UUID, bool, s
 func (s *taskHookRepoStub) CompleteModelSwitch(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, bool, string, string) error {
 	panic("unexpected call to CompleteModelSwitch")
 }
+
+func (s *taskHookRepoStub) UpdateAgentResourceSelection(_ context.Context, _ uuid.UUID, _ []string, _ []string) error {
+	panic("unexpected call to UpdateAgentResourceSelection")
+}

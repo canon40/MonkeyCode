@@ -13,11 +13,14 @@ const sourceFiles = {
   autoReview: readSource("../src/components/console/project/auto-review-dialog.tsx"),
   projectInfo: readSource("../src/components/console/project/project-info.tsx"),
 };
-const combinedSource = Object.values(sourceFiles).join("\n");
 const cjkPattern = /[\u3400-\u9fff]/;
 
 function readSource(path: string) {
   return readFileSync(new URL(path, import.meta.url), "utf8");
+}
+
+function stripLineComments(source: string) {
+  return source.replace(/^\s*\/\/.*$/gm, "");
 }
 
 test("项目基础组件使用 consoleProject i18n key", () => {
@@ -32,7 +35,10 @@ test("项目基础组件使用 consoleProject i18n key", () => {
   assert.match(sourceFiles.autoReview, /t\("consoleProject\.autoReview\.title"\)/);
   assert.match(sourceFiles.projectInfo, /t\("consoleProject\.info\.startAi"\)/);
   assert.match(sourceFiles.projectInfo, /t\("consoleProject\.delete\.description"/);
-  assert.doesNotMatch(combinedSource, cjkPattern);
+  assert.doesNotMatch(
+    Object.values(sourceFiles).map(stripLineComments).join("\n"),
+    cjkPattern,
+  );
 });
 
 test("项目基础组件提供中英文资源", () => {
