@@ -9,6 +9,10 @@ import { apiRequest } from "./requestUtils"
 import { remark } from "remark"
 import strip from "strip-markdown"
 import i18n from "@/i18n"
+import {
+  getVmMessageFromConditions as resolveVmMessageFromConditions,
+  mapVmConditionMessage as resolveVmConditionMessage,
+} from "@/utils/vm-condition-message"
 
 function commonText(key: string, options?: Record<string, unknown>): string {
   return String(i18n.t(key, options))
@@ -642,13 +646,16 @@ export function getLastCondition(vm: DomainVirtualMachine | undefined): GitInCha
 }
 
 
-export function getVmMessage(vm: DomainVirtualMachine | undefined): string {
-  if (!vm) {
-    return ''
-  }
+function translateVmConditionMessage(key: string): string {
+  return commonText(key)
+}
 
-  const lastCondition = vm.conditions?.[vm.conditions.length - 1]
-  return lastCondition?.message || ''
+export function mapVmConditionMessage(rawMessage: string | undefined): string {
+  return resolveVmConditionMessage(rawMessage, translateVmConditionMessage)
+}
+
+export function getVmMessage(vm: DomainVirtualMachine | undefined): string {
+  return resolveVmMessageFromConditions(vm?.conditions, translateVmConditionMessage)
 }
 
 export function getConditionTypeText(conditions: GitInChaitinNetAiMonkeycodeMonkeycodeAiEntTypesCondition[] | undefined): string {
