@@ -82,3 +82,16 @@ organization:
     openwork_mcp_tools:
       - search_capabilities
       - execute_capability
+
+  coding_policy:
+    mode: fast
+    direct_edit_max_files: 3
+    direct_edit_max_lines: 50
+    auto_format_hook: .cursor/hooks/format-after-edit.sh
+    auto_test_hook: .cursor/hooks/auto-test-followup.sh
+    hooks_config: .cursor/hooks.json
+    after_edit:
+      frontend: "cd frontend && pnpm run test:unit"
+      backend: "cd backend && go test ./..."
+    mcp_servers:
+      - openwork
