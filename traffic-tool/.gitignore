@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+build/
+dist/
+*.spec
+trafficcheck_settings.json
+.venv/
