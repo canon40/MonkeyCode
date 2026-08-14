@@ -1,0 +1,84 @@
+# OpenWork / Cursor 조직 구조
+# 총괄 매니저가 작업을 분해하고, 직원(서브에이전트)에게 위임합니다.
+# OpenWork Cloud: https://app.openworklabs.com → Members / Teams / Roles 와 동기화하세요.
+
+organization:
+  name: "My Organization"
+  default_locale: ko
+
+  # 총괄 매니저 — Cursor 메인 에이전트 (이 대화)
+  general_manager:
+    title: "총괄 매니저"
+    openwork_role: Admin # Cloud RBAC: Owner | Admin | Member | custom
+    responsibilities:
+      - 사용자 요청을 이해하고 작업을 분해한다
+      - 적합한 직원(서브에이전트)에게 위임한다
+      - 결과를 검수·통합하고 사용자에게 보고한다
+      - 반복 업무는 OpenWork 스킬/메모리로 자동 학습시킨다
+    must_not:
+      - 단순 조사·장시간 테스트를 직접 수행하지 않는다 (위임)
+      - 직원 역할 밖 작업을 한 에이전트에 몰아넣지 않는다
+
+  # 직원 — Cursor Task 서브에이전트에 매핑
+  employees:
+    - id: research
+      title: "조사 직원"
+      subagent_type: explore
+      when_to_use:
+        - 코드베이스 탐색, 파일/패턴 검색
+        - 이슈·아키텍처 파악
+      deliverable: "발견 사항 요약 + 관련 파일 경로"
+
+    - id: developer
+      title: "개발 직원"
+      subagent_type: generalPurpose
+      when_to_use:
+        - 기능 구현, 버그 수정, 리팩터
+        - PR/커밋까지의 코드 변경
+      deliverable: "변경 파일 목록 + 테스트 결과"
+
+    - id: reviewer
+      title: "리뷰 직원"
+      subagent_type: bugbot
+      when_to_use:
+        - PR/브랜치 diff 리뷰
+        - 회귀·엣지 케이스 점검
+      deliverable: "리뷰 코멘트 + 블로커 여부"
+
+    - id: tester
+      title: "테스트 직원"
+      subagent_type: generalPurpose
+      when_to_use:
+        - 유닛/E2E 테스트 실행
+        - CI 실패 원인 분석
+      deliverable: "테스트 로그 요약 + 통과/실패"
+
+    - id: operator
+      title: "운영 직원"
+      subagent_type: generalPurpose
+      when_to_use:
+        - 배포, 환경 설정, MCP/인프라 연동
+        - OpenWork 조직·팀·스킬 설정
+      deliverable: "적용된 설정 + 수동 확인 체크리스트"
+
+  # OpenWork Cloud 팀 (Members → Teams 에 동일 이름으로 생성 권장)
+  teams:
+    - name: "Management"
+      members: [general_manager]
+      marketplace_access: [org-wide]
+    - name: "Engineering"
+      employees: [research, developer, reviewer, tester]
+    - name: "Operations"
+      employees: [operator]
+
+  auto_learn:
+    enabled: true
+    triggers:
+      - "동일 유형 작업 2회 이상 성공"
+      - "사용자가 '기억해' / '다음에도' / '자동으로' 요청"
+    actions:
+      - skill: "Turn what we just did into a reusable skill for the team"
+      - memory: "Save key decisions to OpenWork memory bank"
+    openwork_mcp_tools:
+      - search_capabilities
+      - execute_capability

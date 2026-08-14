@@ -1,0 +1,48 @@
+---
+description: 작업 완료 후 OpenWork 스킬·메모리 자동 학습. 기능 구현·버그 수정·반복 워크플로우 완료 시 적용.
+alwaysApply: false
+---
+
+# 자동 학습 (Auto-learn)
+
+## 언제 학습하는가
+
+다음 중 하나면 학습 단계를 **생략하지 않는다**:
+
+- 동일 유형 작업을 이번 세션에서 2회 이상 수행했을 때
+- 사용자가 "기억해", "다음에도", "자동으로", "스킬로 만들어"라고 했을 때
+- 팀원이 재사용할 runbook(배포, 리뷰, 이슈 triage 등)이 생겼을 때
+
+## OpenWork MCP로 학습
+
+`openwork` MCP가 **Connected** 상태일 때:
+
+1. `search_capabilities`로 `skill`, `memory`, `plugin`, `marketplace` 관련 capability 검색
+2. 적합한 capability가 있으면 `execute_capability`로:
+   - 개인/팀 스킬 생성·업데이트
+   - memory bank에 결정 사항 저장
+   - marketplace에 플러그인 게시 (팀 공유 시)
+
+스킬 설명(prompt)에는 반드시 포함:
+
+- **언제** 트리거되는지 (Description)
+- **단계별** Instructions (markdown)
+- **완료 기준**과 **실패 시** 에스컬레이션
+
+## MCP 미연결 시
+
+1. 작업 요약을 5~10줄로 정리
+2. 사용자에게 OpenWork Desktop 또는 Cursor MCP OAuth 연결 안내
+3. 채팅에서 다음 문장 제안:
+
+   > Turn what we just did into a reusable skill for the team
+
+## MonkeyCode 레포 작업 학습 예시
+
+| 작업 유형 | 스킬 이름 예시 | Instructions 핵심 |
+|-----------|----------------|-------------------|
+| 프론트 i18n 수정 | `frontend-i18n-fix` | cn.ts/en.ts 동시 수정, test:unit 실행 |
+| VM 오류 매핑 | `vm-condition-message` | vmcondition 패키지 + i18n |
+| PR 머지 전 | `pre-merge-checklist` | test:unit, go test, PR draft→ready |
+
+학습 후 `openwork/org-structure.yaml`의 `auto_learn` 섹션과 충돌하지 않게 **팀 Marketplace**에 게시할지 사용자에게 확인한다 (기본: 팀 Engineering).

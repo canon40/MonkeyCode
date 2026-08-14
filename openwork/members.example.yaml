@@ -1,0 +1,40 @@
+# 팀원 매핑 예시 — 복사 후 members.yaml 로 저장하고 이메일을 채우세요.
+# OpenWork Cloud Members 초대 시 동일 역할을 사용합니다.
+
+members:
+  general_manager:
+    name: "홍길동"
+    email: "manager@example.com"
+    openwork_role: Admin
+    cursor_agent: main # 이 Cursor 대화 = 총괄 매니저
+
+  employees:
+    - id: research
+      name: "김조사"
+      email: "research@example.com"
+      openwork_role: Member
+      team: Engineering
+
+    - id: developer
+      name: "이개발"
+      email: "dev@example.com"
+      openwork_role: Member
+      team: Engineering
+
+    - id: reviewer
+      name: "박리뷰"
+      email: "review@example.com"
+      openwork_role: Member
+      team: Engineering
+
+    - id: tester
+      name: "최테스트"
+      email: "qa@example.com"
+      openwork_role: Member
+      team: Engineering
+
+    - id: operator
+      name: "정운영"
+      email: "ops@example.com"
+      openwork_role: Admin
+      team: Operations
